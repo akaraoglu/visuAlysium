@@ -1,10 +1,55 @@
 import os
 import sys
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QListWidgetItem, QLabel, QSplitter, QMenu, QMenuBar, QMessageBox
-from PyQt6.QtGui import QPixmap, QIcon, QFileSystemModel , QAction
-from PyQt6.QtCore import QDir, QStandardPaths, QSize
-import os
+from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtCore import Qt, QDir, QStandardPaths, QSize, QThread, pyqtSignal, QRunnable, QThreadPool, QObject
+from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QListWidget, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox
+from PyQt6.QtGui import QPixmap, QIcon, QFileSystemModel, QAction
+import time
+
+
+class WorkerSignals(QObject):
+    finished = pyqtSignal()
+    result = pyqtSignal(object, object)
+
+
+class Worker(QRunnable):
+    def __init__(self, function, *args, **kwargs):
+        super().__init__()
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+
+    @pyqtSlot()
+    def run(self):
+        result1, result2   = self.function(*self.args, **self.kwargs)
+        self.signals.result.emit(result1, result2 )
+        self.signals.finished.emit()
+
+def load_thumbnail(image_path):
+    pixmap = QPixmap(image_path).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+    image_file = os.path.basename(image_path)
+    icon = QIcon(pixmap)
+    return icon, image_file
+
+class ImageLoaderThread(QThread):
+    image_loaded = pyqtSignal(QIcon, str)
+
+    def __init__(self, folder_path):
+        super().__init__()
+        self.folder_path = folder_path
+
+    def run(self):
+        image_files = [file for file in os.listdir(self.folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+        
+        thread_pool = QThreadPool.globalInstance()
+        
+        for image_file in image_files:
+            image_path = os.path.join(self.folder_path, image_file)
+            runnable = Worker(load_thumbnail, image_path)
+            runnable.signals.result.connect(self.image_loaded.emit)
+            QThreadPool.globalInstance().start(runnable)
+
 
 class ImageViewer(QMainWindow):
     def __init__(self):
@@ -91,27 +136,33 @@ class ImageViewer(QMainWindow):
         self.load_images(folder_path)
 
     def load_images(self, folder_path):
-        image_files = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+        self.image_loader_thread = ImageLoaderThread(folder_path)
+        self.image_loader_thread.image_loaded.connect(self.add_thumbnail)
+        self.image_loader_thread.run()
 
-        # Clear previous items
-        self.image_list_widget.clear()
 
-        # Add image thumbnails
-        for image_file in image_files:
-            image_path = os.path.join(folder_path, image_file)
-            pixmap = QPixmap(image_path).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)  # Adjust the size here
-            icon = QIcon(pixmap)
-            item = QListWidgetItem(icon, image_file)
-            item.setToolTip(image_file)  # Set tooltip to display full file name
-            item.setSizeHint(QSize(100, 120))  # Set a fixed size for the items
-            item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)  # Center align text
-            self.image_list_widget.addItem(item)
+    # def load_images(self, folder_path):
+    #     image_files = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
 
-        if self.image_list_widget.count() == 0:
-            print("No images found in this folder.")
-        else:
-            print("Images loaded successfully.")
-
+    #     thread_pool = QThreadPool.globalInstance()
+        
+    #     for image_file in image_files:
+    #         image_path = os.path.join(folder_path, image_file)
+    #         runnable = Worker(load_thumbnail, image_path)
+    #         runnable.signals.result.connect(self.add_thumbnail)
+    #         QThreadPool.globalInstance().start(runnable)
+    #         # thread_pool.start(runnable)
+            
+    def add_thumbnail(self, icon, image_path):
+        # item = QListWidgetItem(QIcon(pixmap), os.path.basename(image_path))
+        # self.image_list_widget.addItem(item)
+        
+        item = QListWidgetItem(icon, image_path)
+        item.setToolTip(image_path)  # Set tooltip to display full file name
+        item.setSizeHint(QSize(100, 120))  # Set a fixed size for the items
+        item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)  # Center align text
+        self.image_list_widget.addItem(item)
+        
     def image_selected(self, index):
         # Retrieve the selected image and perform any necessary action
         pass
@@ -128,24 +179,26 @@ class ImageViewer(QMainWindow):
         # Create a QMessageBox
         msg_box = QMessageBox()
         msg_box.setWindowTitle("About")
+        msg_box.setIcon(QMessageBox.Icon.Information)
+
 
         # Set text and customize appearance
-        msg_box.setText("This is an experimental Python-based image visualizer and editor.\n\n"
-            "Copyright (c) 2024 Your Name\n\n"
-            "This program is free software: you can redistribute it and/or modify "
-            "it under the terms of the GNU General Public License as published by "
-            "the Free Software Foundation, either version 3 of the License, or "
-            "(at your option) any later version.\n\n"
-            "This program is distributed in the hope that it will be useful, "
-            "but WITHOUT ANY WARRANTY; without even the implied warranty of "
-            "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the "
-            "GNU General Public License for more details.\n\n"
-            "You should have received a copy of the GNU General Public License "
-            "along with this program.  If not, see <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>."
+        msg_box.setText(
+            "<p>This is an experimental Python-based image visualizer and editor.</p>"
+            "<p>Copyright (c) 2024 VisuAlysium</p>"
+            "<p>This program is free software: you can redistribute it and/or modify it under the terms of the "
+            "GNU General Public License as published by the Free Software Foundation, either version 3 of the License, "
+            "or (at your option) any later version.</p>"
+            "<p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without "
+            "even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General "
+            "Public License for more details.</p>"
+            "<p>You should have received a copy of the GNU General Public License along with this program. If not, "
+            "see <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.</p>"
+      
         )
 
-        # Customize appearance
-        msg_box.setStyleSheet("QLabel{min-width: 600px;}")
+        # # Customize appearance
+        # msg_box.setStyleSheet("QLabel{min-width: 600px;}")
         
         # Set fixed size
         msg_box.setFixedSize(800, 400)
