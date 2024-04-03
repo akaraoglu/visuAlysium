@@ -2,15 +2,15 @@ import os
 import sys
 from PyQt6.QtCore import pyqtSlot
 from PyQt6.QtCore import Qt, QDir, QStandardPaths, QSize, QThread, pyqtSignal, QRunnable, QThreadPool, QObject
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QListWidget, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox
+from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QListWidget, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
 from PyQt6.QtGui import QPixmap, QIcon, QFileSystemModel, QAction
 import time
+from ImageEditorWindow import ImageViewerWindow
 
 
 class WorkerSignals(QObject):
     finished = pyqtSignal()
     result = pyqtSignal(object, object)
-
 
 class Worker(QRunnable):
     def __init__(self, function, *args, **kwargs):
@@ -28,9 +28,8 @@ class Worker(QRunnable):
 
 def load_thumbnail(image_path):
     pixmap = QPixmap(image_path).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-    image_file = os.path.basename(image_path)
     icon = QIcon(pixmap)
-    return icon, image_file
+    return icon, image_path
 
 class ImageLoaderThread(QThread):
     image_loaded = pyqtSignal(QIcon, str)
@@ -39,19 +38,22 @@ class ImageLoaderThread(QThread):
         super().__init__()
         self.folder_path = folder_path
 
+    @pyqtSlot()
     def run(self):
         image_files = [file for file in os.listdir(self.folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
         
-        thread_pool = QThreadPool.globalInstance()
-        
+        thread_pool = QThreadPool()
+        thread_pool.setMaxThreadCount(8)
         for image_file in image_files:
             image_path = os.path.join(self.folder_path, image_file)
             runnable = Worker(load_thumbnail, image_path)
             runnable.signals.result.connect(self.image_loaded.emit)
-            QThreadPool.globalInstance().start(runnable)
-
-
-class ImageViewer(QMainWindow):
+            thread_pool.start(runnable)
+    
+    def begin(self): 
+        self.start()
+        
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
@@ -95,9 +97,8 @@ class ImageViewer(QMainWindow):
         self.folder_tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.folder_tree_view.customContextMenuRequested.connect(self.open_menu)
         self.folder_tree_view.setRootIndex(self.folder_model.index(''))  # Set the root index to root directory
-                # # Set default path to user's desktop directory
-        desktop_path = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.DesktopLocation)[0]
-        # self.folder_model.setRootPath(desktop_path)
+        
+        desktop_path = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.DownloadLocation)[0]
         desktop_index = self.folder_model.index(desktop_path)
         self.folder_tree_view.setCurrentIndex(desktop_index)
 
@@ -109,6 +110,11 @@ class ImageViewer(QMainWindow):
         self.image_list_widget.setUniformItemSizes(True)  # Enable uniform item sizes
         self.image_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)  # Set resize mode to Adjust
         self.image_list_widget.setSpacing(10)  # Set spacing between items
+
+    
+        self.image_list_widget.itemDoubleClicked.connect(self.image_double_clicked)
+        self.image_list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.image_list_widget.customContextMenuRequested.connect(self.open_image_menu)
 
         # Add widgets to layout
         splitter = QSplitter()
@@ -123,6 +129,13 @@ class ImageViewer(QMainWindow):
         self.layout.addWidget(splitter)
         self.folder_tree_view.setColumnWidth(0, 250)  # Set the width of the "Name" column
 
+    def open_image_menu(self, position):
+        menu = QMenu()
+        open_image_action = QAction("Open Image", self)
+        open_image_action.triggered.connect(lambda: self.open_image())
+        menu.addAction(open_image_action)
+        menu.exec(self.image_list_widget.viewport().mapToGlobal(position))
+
     def open_menu(self, position):
         menu = QMenu()
         show_images_action = QAction("Show Images", self)
@@ -130,51 +143,41 @@ class ImageViewer(QMainWindow):
         menu.addAction(show_images_action)
         menu.exec(self.folder_tree_view.viewport().mapToGlobal(position))
 
-
     def folder_selected(self, index):
         folder_path = self.folder_model.filePath(index)
         self.load_images(folder_path)
 
     def load_images(self, folder_path):
+        self.image_list_widget.clear()
         self.image_loader_thread = ImageLoaderThread(folder_path)
         self.image_loader_thread.image_loaded.connect(self.add_thumbnail)
         self.image_loader_thread.run()
 
-
-    # def load_images(self, folder_path):
-    #     image_files = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
-
-    #     thread_pool = QThreadPool.globalInstance()
-        
-    #     for image_file in image_files:
-    #         image_path = os.path.join(folder_path, image_file)
-    #         runnable = Worker(load_thumbnail, image_path)
-    #         runnable.signals.result.connect(self.add_thumbnail)
-    #         QThreadPool.globalInstance().start(runnable)
-    #         # thread_pool.start(runnable)
-            
     def add_thumbnail(self, icon, image_path):
-        # item = QListWidgetItem(QIcon(pixmap), os.path.basename(image_path))
-        # self.image_list_widget.addItem(item)
-        
-        item = QListWidgetItem(icon, image_path)
+        image_file = os.path.basename(image_path)
+        item = QListWidgetItem(icon, image_file)
         item.setToolTip(image_path)  # Set tooltip to display full file name
         item.setSizeHint(QSize(100, 120))  # Set a fixed size for the items
         item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)  # Center align text
         self.image_list_widget.addItem(item)
-        
-    def image_selected(self, index):
-        # Retrieve the selected image and perform any necessary action
-        pass
+    
+    def image_double_clicked(self, item):
+        image_path = item.toolTip()
+        self.image_viewer = ImageViewerWindow(image_path)
+        self.image_viewer.show()
 
     def open_folder(self):
-        # Implement this method to open a folder
-        pass
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if folder_path:
+            self.load_images(folder_path)
 
     def open_image(self):
-        # Implement this method to open an image
-        pass
-        
+        file_dialog = QFileDialog()
+        image_path, _ = file_dialog.getOpenFileName(self, "Open Image", QDir.homePath(), "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
+        if image_path:
+            self.image_viewer = ImageViewerWindow(image_path)
+            self.image_viewer.show()
+
     def about(self):
         # Create a QMessageBox
         msg_box = QMessageBox()
@@ -184,7 +187,7 @@ class ImageViewer(QMainWindow):
 
         # Set text and customize appearance
         msg_box.setText(
-            "<p>This is an experimental Python-based image visualizer and editor.</p>"
+            "p>This is an experimental Python-based image visualizer and editor.</p>"
             "<p>Copyright (c) 2024 VisuAlysium</p>"
             "<p>This program is free software: you can redistribute it and/or modify it under the terms of the "
             "GNU General Public License as published by the Free Software Foundation, either version 3 of the License, "
@@ -235,7 +238,7 @@ def main():
     # Change some style settings
     app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
 
-    window = ImageViewer()
+    window = MainWindow()
     
     # Get the screen dimensions
     screen_rect = app.primaryScreen().availableGeometry()
@@ -253,10 +256,6 @@ def main():
 
     window.show()
     sys.exit(app.exec())
-
-if __name__ == '__main__':
-    main()
-
 
 if __name__ == '__main__':
     main()
