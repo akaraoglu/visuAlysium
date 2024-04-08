@@ -165,6 +165,7 @@ class MainWindow(QMainWindow):
         image_path = item.toolTip()
         self.image_viewer = ImageViewerWindow(image_path)
         self.image_viewer.show()
+        self.image_viewer.show_image(image_path)
 
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -213,8 +214,14 @@ class MainWindow(QMainWindow):
 from PyQt6.QtGui import QPalette, QColor
 
 def main():
-    app = QApplication(sys.argv)
+    
+    # This bit gets the taskbar icon working properly in Windows
+    if sys.platform.startswith('win'):
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u'Visualysium.ExImaVi.ImageVisualizer.0.01') # Arbitrary string
 
+    app = QApplication(sys.argv)
+    
     # Set the application style to Fusion
     app.setStyle("Fusion")
 
@@ -237,9 +244,10 @@ def main():
 
     # Change some style settings
     app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
+        # Set application icon
 
     window = MainWindow()
-    
+
     # Get the screen dimensions
     screen_rect = app.primaryScreen().availableGeometry()
 
@@ -255,6 +263,13 @@ def main():
     window.setGeometry(int(window_x), int(window_y), int(window_width), int(window_height))
 
     window.show()
+    icon_path = "C:/Users/alika/Desktop/D/workspace/visuAlysium/icons/main_icon.png"
+    app_icon = QIcon(icon_path)
+    app.setWindowIcon(app_icon)
+    app.setApplicationName("VisuAlysium")
+    app.setApplicationDisplayName("VisuAlysium")
+    
+
     sys.exit(app.exec())
 
 if __name__ == '__main__':
