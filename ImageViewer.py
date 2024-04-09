@@ -1,13 +1,15 @@
 from PyQt6.QtGui import QWheelEvent
-from PyQt6.QtCore import pyqtSlot, Qt, QSize, QPoint, QRect, QRectF, QPointF
-from PyQt6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem, QApplication, QFileDialog, QMenu, QGraphicsProxyWidget
-from PyQt6.QtGui import QPixmap, QCursor, QAction, QPen, QImage
+from PyQt6.QtCore import pyqtSlot,pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, QPointF, QSizeF
+from PyQt6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem, QFileDialog, QMenu, QGraphicsProxyWidget, QRubberBand
+from PyQt6.QtGui import QPixmap, QCursor, QAction, QPen, QImage, QPainterPath, QTransform, QColor
 
 
 from HoverButton import HoverButton
 import numpy as np
 
 class ImageViewer(QGraphicsView):
+    crop_rectangle_changed = pyqtSignal(QRectF)
+
     def __init__(self):
         super().__init__()
         self.scene = QGraphicsScene()
@@ -17,7 +19,6 @@ class ImageViewer(QGraphicsView):
         
         # Flags for active zooming/panning.
         self._isZooming = False
-        # self._isPanning = False
         self._isPanning = False        # to enable or disable pan
         self.pixmap_item = None
         
@@ -33,6 +34,8 @@ class ImageViewer(QGraphicsView):
         self.previous_pixmap = None
         self.original_pixmap = None
 
+        self.cropRect = None
+         
         # # Add buttons
         self.button_list = []
 
@@ -41,10 +44,7 @@ class ImageViewer(QGraphicsView):
         button_zoom_in = self.create_new_button(icon="icons/zoom-in.png", connect_to=self.zoom_in)
         button_zoom_out = self.create_new_button(icon="icons/zoom-out.png", connect_to=self.zoom_out)
 
-        self.button_list.append(button_fit_screen)
-        self.button_list.append(button_original_size)
-        self.button_list.append(button_zoom_in)
-        self.button_list.append(button_zoom_out)
+        self.button_list = [button_fit_screen, button_original_size, button_zoom_in, button_zoom_out]
 
         self.createContextMenu()
         self.aspectRatioMode = Qt.AspectRatioMode.KeepAspectRatio
@@ -54,6 +54,8 @@ class ImageViewer(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setInteractive(True)
 
+        self.rubber_band = None
+        self.rect_start_point = None
 
     def createContextMenu(self):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -150,20 +152,31 @@ class ImageViewer(QGraphicsView):
     
     def load_new_pixmap(self, new_pixmap):
         if not new_pixmap.isNull():
-            if self.pixmap_item is not None:
-                if self.current_pixmap is None:  self.current_pixmap = new_pixmap
-                if self.original_pixmap is None:  self.current_pixmap = new_pixmap
-                self.previous_pixmap = self.current_pixmap
-                self.scene.removeItem(self.pixmap_item)
+            # Assign new_pixmap to current_pixmap if current_pixmap is None
+            if self.current_pixmap is None:
                 self.current_pixmap = new_pixmap
-            self.scene.clear()  # Clear existing items
-            self.resetTransform()  # Reset any previous transformation
+
+            # Fix: Assign new_pixmap to original_pixmap if original_pixmap is None
+            if self.original_pixmap is None:
+                self.original_pixmap = new_pixmap
+
+            self.previous_pixmap = self.current_pixmap
+            self.scene.removeItem(self.pixmap_item) if self.pixmap_item else None
+            self.current_pixmap = new_pixmap
+            # self.scene.clear()  # Clear existing items
+            # self.resetTransform()  # Reset any previous transformation
             self.pixmap_item = QGraphicsPixmapItem(self.current_pixmap)
             self.scene.addItem(self.pixmap_item)
-            # scene_rect = self.scene.itemsBoundingRect()
-            # self.setSceneRect(scene_rect)
-            self.setSceneRect(QRectF(new_pixmap.rect()))  # Set scene size to image size.
+            self.setSceneRect(QRectF(new_pixmap.rect()))  # Set scene size to image size
             self.show_image_initial_size()
+
+        # show the rectangle over the image.
+        if self.cropRect is not None:
+            self.update_rect()
+            self.scene.removeItem(self.cropRect)
+            # self.cropRect = QGraphicsRectItem()
+            # self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
+            self.scene.addItem(self.cropRect)
         
     def open(self, imagePath):
         pixmap = QPixmap(imagePath)
@@ -171,36 +184,24 @@ class ImageViewer(QGraphicsView):
         self.previous_pixmap = pixmap
         self.current_pixmap = pixmap
         self.load_new_pixmap(pixmap)
-    
+        
     def setImage(self, image):
-        """ Set the scene's current image pixmap to the input QImage or QPixmap.
-        Raises a RuntimeError if the input image has type other than QImage or QPixmap.
-        :type image: QImage | QPixmap
-        """
         if type(image) is QPixmap:
             pixmap = image
         elif type(image) is QImage:
             pixmap = QPixmap.fromImage(image)
         elif (np is not None) and (type(image) is np.ndarray):
-                image = image.astype(np.float32)
-                image -= image.min()
-                image /= image.max()
-                image *= 255
-                image[image > 255] = 255
-                image[image < 0] = 0
-                image = image.astype(np.uint8)
-                height, width = image.shape
-                bytes = image.tobytes()
-                qimage = QImage(bytes, width, height, QImage.Format.Format_Grayscale8)
-                pixmap = QPixmap.fromImage(qimage)
+            if len(image.shape) == 2:  # Grayscale image
+                qimage = QImage(image.data, image.shape[1], image.shape[0], QImage.Format_Grayscale8)
+            elif len(image.shape) == 3 and image.shape[2] == 3:  # Color image
+                qimage = QImage(image.data, image.shape[1], image.shape[0], image.shape[1] * 3, QImage.Format_RGB888)
+            else:
+                raise ValueError("Unsupported image shape.")
+            pixmap = QPixmap.fromImage(qimage)
         else:
             raise RuntimeError("ImageViewer.setImage: Argument must be a QImage, QPixmap, or numpy.ndarray.")
         
         self.load_new_pixmap(pixmap)
-
-        
-        self.updateViewer()
-
         
     def wheelEvent(self, event: QWheelEvent):
         if event.angleDelta().y() > 0:
@@ -217,6 +218,14 @@ class ImageViewer(QGraphicsView):
     def zoom(self, factor):
             self.scale(factor, factor)
     
+    def updateViewer(self, zoomRect):
+        if not self.hasImage():
+            return
+        if (zoomRect):
+            self.fitInView(zoomRect, self.aspectRatioMode)  # Show zoomed rect.
+        else:
+            self.fitInView(self.sceneRect(), self.aspectRatioMode)  # Show entire image.
+
     def hasImage(self):
         """ Returns whether the scene contains an image pixmap.
         """
@@ -247,51 +256,136 @@ class ImageViewer(QGraphicsView):
         # Start dragging to pan?
         self._pixelPosition = event.pos()  # store pixel position
 
-        if self._crop_mode:
-            self.rect_item = None
-            self.rectItem = QGraphicsRectItem()
-            self.rectItem.setPen(QPen(Qt.GlobalColor.red))
-            self.scene.addItem(self.rectItem)
-            self.startPoint = self.mapToScene(event.pos())
+        super().mousePressEvent(event)
+        if self._crop_mode and event.button() == Qt.MouseButton.LeftButton:
+            self.rect_start_point = self.mapToScene(event.pos())
+            if self.cropRect is None:
+                self.cropRect = QGraphicsRectItem()
+                self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
+                self.scene.addItem(self.cropRect)
+            self.cropRect.setRect(QRectF(self.rect_start_point, self.rect_start_point))
+
         else:
             # Start dragging a region zoom box?
             if (self.regionZoomKeyPressed == True) and (event.button() == Qt.MouseButton.LeftButton):
                 self._pixelPosition = event.pos()  # store pixel position
                 self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
                 self._isZooming = True
-
-            if event.button() == Qt.MouseButton.LeftButton:
+            elif event.button() == Qt.MouseButton.LeftButton:
                 self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
                 self._isPanning = True
-                self._startPosPanning = self.mapToScene(event.pos())
+                self._startPosPanning = event.pos()
 
         # event.accept()
         QGraphicsView.mousePressEvent(self, event)
-
-    def mouseMoveEvent(self, event):
+    
+    def update_rect(self):
+        rect = self.get_current_crop_rect()
+        # Adjust rect to ensure it's within the image boundaries
+        if rect.left() < self.sceneRect().left():
+            rect.setLeft(self.sceneRect().left())
+        if rect.right() > self.sceneRect().right():
+            rect.setRight(self.sceneRect().right())
+        if rect.top() < self.sceneRect().top():
+            rect.setTop(self.sceneRect().top())
+        if rect.bottom() > self.sceneRect().bottom():
+            rect.setBottom(self.sceneRect().bottom())
+        self.cropRect.setRect(rect)
         
-        if self._crop_mode:
-            if self.rectItem is not None:
-                rect = QRectF(self.startPoint, self.mapToScene(event.pos())).normalized()
-                self.rectItem.setRect(rect)
-        else:
-            if self._isPanning:
-                delta_scene = self.mapToScene(event.pos()) - self._startPosPanning
-                self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - int(delta_scene.x()))
-                self.verticalScrollBar().setValue(self.verticalScrollBar().value() - int(delta_scene.y()))
+        
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        if self._crop_mode and self.cropRect and event.buttons() & Qt.MouseButton.LeftButton:
+            current_point = self.mapToScene(event.pos())
+            
+            # Ensure current_point does not go beyond the image's boundaries
+            # Assuming self.imageRect represents the QRectF of the image's dimensions
+            max_x = max(min(current_point.x(), self.sceneRect().right()), self.sceneRect().left())
+            max_y = max(min(current_point.y(), self.sceneRect().bottom()), self.sceneRect().top())
+            current_point.setX(max_x)
+            current_point.setY(max_y)
+            
+            rect = QRectF(self.rect_start_point, current_point).normalized()
+            
+            self.cropRect.setRect(rect)
+            self.update_rect()
+
+        if self._isPanning:
+            # Calculate the movement delta in the view's coordinate system
+            delta = event.pos() - self._startPosPanning
+            
+            # Scaling factor for panning sensitivity
+            scaling_factor = 0.01  # Adjust based on testing
+            
+            # Apply the scaled delta to the scroll bars, converting to int
+            new_h_value = self.horizontalScrollBar().value() - int(delta.x() * scaling_factor)
+            new_v_value = self.verticalScrollBar().value() - int(delta.y() * scaling_factor)
+            
+            self.horizontalScrollBar().setValue(new_h_value)
+            self.verticalScrollBar().setValue(new_v_value)
+            
+            # Update the start position for the next event
+            self._startPosPanning = event.pos()
         QGraphicsView.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
         if self._crop_mode:
-            if self.rectItem is not None:
-                rect = QRectF(self.startPoint, self.mapToScene(event.pos())).normalized()
-                self.rectItem.setRect(rect)
-                self.rectItem = None
-        else:
             if event.button() == Qt.MouseButton.LeftButton:
+                # rect = self.cropRect.rect()
+                # Emit updating the crop rectangle
+                self.crop_rectangle_changed.emit(self.get_current_crop_rect())
+
+        else:
+            if (self.regionZoomKeyPressed == True) and (event.button() == Qt.MouseButton.LeftButton):
+                zoomRect = self.scene.selectionArea().boundingRect().intersected(self.sceneRect())
+                self.setDragMode(QGraphicsView.DragMode.NoDrag)
+                self.scene.setSelectionArea(QPainterPath())
+                zoomPixelWidth = abs(event.pos().x() - self._pixelPosition.x())
+                zoomPixelHeight = abs(event.pos().y() - self._pixelPosition.y())
+                if zoomPixelWidth > 3 and zoomPixelHeight > 3:
+                    if zoomRect.isValid() and (zoomRect != self.sceneRect()):
+                        self.updateViewer(zoomRect)
+            if self._isPanning:
                 self.setDragMode(QGraphicsView.DragMode.NoDrag)
                 self._isPanning = False
     
     def get_current_pixmap(self):
         return self.current_pixmap
     
+    def get_current_crop_rect(self):
+        return self.cropRect.rect()
+    
+    def set_crop_rectangle(self, x, y, width, height):
+        self.cropRect.setRect(QRectF(QPointF(x,y), QSizeF(width, height)))
+    
+    def flip_vertical(self):
+        if self.current_pixmap:
+            # Flip the pixmap vertically
+            self.current_pixmap = self.current_pixmap.transformed(QTransform().scale(1, -1))
+            # Update the pixmap item with the new pixmap
+            self.load_new_pixmap(self.current_pixmap)
+            self.show_image_initial_size()  # Adjust the view to fit the flipped image
+
+    def flip_horizontal(self):
+        if self.current_pixmap:
+            # Flip the pixmap horizontally
+            self.current_pixmap = self.current_pixmap.transformed(QTransform().scale(-1, 1))
+            # Update the pixmap item with the new pixmap
+            self.load_new_pixmap(self.current_pixmap)
+            self.show_image_initial_size()  # Adjust the view to fit the flipped image
+
+    def rotate_left(self):
+        if self.current_pixmap:
+            # Rotate the pixmap 90 degrees counter-clockwise
+            self.current_pixmap = self.current_pixmap.transformed(QTransform().rotate(-90))
+            # Update the pixmap item with the new pixmap
+            self.load_new_pixmap(self.current_pixmap)
+            self.show_image_initial_size()  # Adjust the view to fit the rotated image
+
+    def rotate_right(self):
+        if self.current_pixmap:
+            # Rotate the pixmap 90 degrees clockwise
+            self.current_pixmap = self.current_pixmap.transformed(QTransform().rotate(90))
+            # Update the pixmap item with the new pixmap
+            self.load_new_pixmap(self.current_pixmap)
+            self.show_image_initial_size()  # Adjust the view to fit the rotated image

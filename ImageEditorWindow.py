@@ -6,30 +6,43 @@ from HoverButton import HoverButton
 from CropWindow import CropWindow
 
 class ButtonLayer(QWidget):
-    button_clicked = pyqtSignal()
+    # Define signals for different button actions
+    button_crop_clicked = pyqtSignal()
+    button_brightness_clicked = pyqtSignal()
+    button_colors_clicked = pyqtSignal()
+    button_edit_image_clicked = pyqtSignal()
+    button_effects_clicked = pyqtSignal()
+    button_de_noise_clicked = pyqtSignal()
+    button_histogram_clicked = pyqtSignal()
     
     def __init__(self):
         super().__init__()
         
-        self.button_size = 60
-        self.icon_size = 40
+        self.button_size = 60  # Button size
+        self.icon_size = 40  # Icon size inside the button
 
+        # Create a layout for buttons
         layout = QGridLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Aligns widgets at the top within the layout
         self.setLayout(layout)
 
-        # Create two columns of button lists with 10 buttons each
-        for i in range(5):
-            for k in range(2):
-                # button = QPushButton("Button %d"%i)
-                button = self.create_new_button(icon="icons/image_settings.png", connect_to= self.button_clicked)
-                layout.addWidget(button, i, k)
-                # print(i,k)
-    
-    def create_new_button(self, icon, connect_to):
+        # Create and add buttons for each action
+        self.add_button("icons/crop.png", "Adjust Cropping", self.button_crop_clicked)
+        self.add_button("icons/brightness.png", "Adjust Lighting", self.button_brightness_clicked)
+        self.add_button("icons/colors.png", "Adjust Colors", self.button_colors_clicked)
+        self.add_button("icons/edit-image.png", "Adjust Levels", self.button_edit_image_clicked)
+        self.add_button("icons/button_effects.png", "Sharpness", self.button_effects_clicked)
+        # Assuming the "De-Noise" button should have a unique action, use `button_de_noise_clicked` signal
+        self.add_button("icons/button_effects.png", "De-Noise", self.button_de_noise_clicked)
+        self.add_button("icons/histogram.png", "Histogram", self.button_histogram_clicked)
+        
+
+    def add_button(self, icon, tooltip, signal):
+        # Assuming HoverButton is a custom button class that supports `setToolTip` and `clicked` signal
         new_button = HoverButton(self, icon=icon, button_size=self.button_size, icon_size=self.icon_size)
-        new_button.clicked.connect(self.button_clicked.emit)  # Connect button click to emit button_clicked signal
-        return new_button
+        new_button.setToolTip(tooltip)  # Set tooltip for the button
+        new_button.clicked.connect(signal.emit)  # Connect button click to the respective signal
+        self.layout().addWidget(new_button)  # Add button to the layout
 
 class HistoryWidget(QWidget):
     def __init__(self):
@@ -64,8 +77,6 @@ class ImageViewerWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Image Viewer")
         self.image_path = image_path
-        self.cropWindow = CropWindow()
-
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -96,16 +107,22 @@ class ImageViewerWindow(QMainWindow):
         self.resize(half_screen_size)
 
         # Connect button signal to slot
-        self.buttons_layer.button_clicked.connect(self.edit_button_clicked)
+        self.buttons_layer.button_crop_clicked.connect(self.edit_button_clicked)
 
     def show_image(self,image_path):
         self.graphics_view.open(self.image_path) 
         self.history_widget.update_history_list(self.graphics_view.get_current_pixmap(), "Original Image")
 
     def edit_button_clicked(self):
+        self.cropWindow = CropWindow()
+        self.cropWindow.crop_confirmed.connect(self.cropping_confirmed)
         self.cropWindow.show()
         self.cropWindow.set_image(self.graphics_view.get_current_pixmap())
-
         # Handle edit button click event
         print("Handle edit button click event")
         pass  # Placeholder, put your code here to handle the edit button click
+    
+    def cropping_confirmed(self, rect):
+        print("cropping_confirmed")
+        print(f"Rectangle Coordinates: Top Left ({rect.topLeft().x()}, {rect.topLeft().y()}) - Bottom Right ({rect.bottomRight().x()}, {rect.bottomRight().y()})")
+        print(f"Rectangle Size: Width {rect.width()} - Height {rect.height()}")
