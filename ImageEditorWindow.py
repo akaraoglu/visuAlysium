@@ -80,14 +80,14 @@ class ImageViewerWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        self.graphics_view = ImageViewer()
+        self.image_viewer = ImageViewer()
         self.history_widget = HistoryWidget()  # Create instance of HistoryWidget
         self.buttons_layer = ButtonLayer()
 
         main_layout = QGridLayout(central_widget)
 
         image_layout = QVBoxLayout()
-        image_layout.addWidget(self.graphics_view)
+        image_layout.addWidget(self.image_viewer)
 
         main_layout.addWidget(self.buttons_layer, 0, 0)
         main_layout.addLayout(image_layout, 0, 1)
@@ -110,19 +110,22 @@ class ImageViewerWindow(QMainWindow):
         self.buttons_layer.button_crop_clicked.connect(self.edit_button_clicked)
 
     def show_image(self,image_path):
-        self.graphics_view.open(self.image_path) 
-        self.history_widget.update_history_list(self.graphics_view.get_current_pixmap(), "Original Image")
+        self.image_viewer.open(self.image_path) 
+        self.history_widget.update_history_list(self.image_viewer.get_current_pixmap(), "Original Image")
 
     def edit_button_clicked(self):
         self.cropWindow = CropWindow()
         self.cropWindow.crop_confirmed.connect(self.cropping_confirmed)
         self.cropWindow.show()
-        self.cropWindow.set_image(self.graphics_view.get_current_pixmap())
+        self.cropWindow.set_image(self.image_viewer.get_current_pixmap())
         # Handle edit button click event
         print("Handle edit button click event")
         pass  # Placeholder, put your code here to handle the edit button click
     
-    def cropping_confirmed(self, rect):
+    def cropping_confirmed(self, pixmap):
         print("cropping_confirmed")
-        print(f"Rectangle Coordinates: Top Left ({rect.topLeft().x()}, {rect.topLeft().y()}) - Bottom Right ({rect.bottomRight().x()}, {rect.bottomRight().y()})")
-        print(f"Rectangle Size: Width {rect.width()} - Height {rect.height()}")
+        self.image_viewer.load_new_pixmap(pixmap)
+        self.history_widget.update_history_list(pixmap,"Crop and rotate.")
+        
+        # print(f"Rectangle Coordinates: Top Left ({rect.topLeft().x()}, {rect.topLeft().y()}) - Bottom Right ({rect.bottomRight().x()}, {rect.bottomRight().y()})")
+        # print(f"Rectangle Size: Width {rect.width()} - Height {rect.height()}")

@@ -93,7 +93,7 @@ class ButtonLayer(QWidget):
         self.crop_height_edit.setText(str(int(height)))
     
 class CropWindow(QMainWindow):
-    crop_confirmed = pyqtSignal(QRectF)
+    crop_confirmed = pyqtSignal(QPixmap)
 
     def __init__(self):
         super().__init__()
@@ -187,7 +187,10 @@ class CropWindow(QMainWindow):
     def ok_pressed(self):
         # Here you would typically confirm the changes and possibly close the window or reset it for another operation
         print( "OK", "Changes have been applied.")
-        self.crop_confirmed.emit(self.image_viewer.get_current_crop_rect())
+        # self.image_viewer.get_current_crop_rect()
+        self.image_viewer.crop_image(self.image_viewer.get_current_crop_rect())
+
+        self.crop_confirmed.emit(self.image_viewer.get_current_pixmap())
         self.close() #to close the window
 
     def cancel_pressed(self):
