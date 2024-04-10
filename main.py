@@ -70,6 +70,8 @@ class MainWindow(QMainWindow):
         file_menu = QMenu("&File", self)
         menu_bar.addMenu(file_menu)
 
+        self.image_viewer = ImageViewerWindow()
+
         # Create actions for the "File" menu
         open_folder_action = QAction("Open Folder", self)
         open_image_action = QAction("Open Image", self)
@@ -163,9 +165,8 @@ class MainWindow(QMainWindow):
     
     def image_double_clicked(self, item):
         image_path = item.toolTip()
-        self.image_viewer = ImageViewerWindow(image_path)
+        self.image_viewer.show_new_image(image_path)
         self.image_viewer.show()
-        self.image_viewer.show_image(image_path)
 
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")

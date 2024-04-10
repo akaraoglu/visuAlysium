@@ -181,7 +181,7 @@ class ImageViewer(QGraphicsView):
             # self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
             self.scene.addItem(self.cropRect)
         
-    def open(self, imagePath):
+    def open_new_image(self, imagePath):
         pixmap = QPixmap(imagePath)
         self.original_pixmap = pixmap
         self.previous_pixmap = pixmap
@@ -272,14 +272,13 @@ class ImageViewer(QGraphicsView):
                 self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
                 self._isPanning = True
                 self._startPosPanning = event.pos()
-            else:
+            elif (event.button() == Qt.MouseButton.LeftButton):
                 self.rect_start_point = self.mapToScene(event.pos())
                 if self.cropRect is None:
                     self.cropRect = QGraphicsRectItem()
                     self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
                     self.scene.addItem(self.cropRect)
                 self.cropRect.setRect(QRectF(self.rect_start_point, self.rect_start_point))
-        
         else:
             # Start dragging a region zoom box?
             if (self.regionZoomKeyPressed == True) and (event.button() == Qt.MouseButton.LeftButton):
@@ -314,6 +313,7 @@ class ImageViewer(QGraphicsView):
         return rect_changed
         
     def mouseMoveEvent(self, event):
+        print(event.button())
         super().mouseMoveEvent(event)
         if self._isPanning:
             # Calculate the movement delta in the view's coordinate system

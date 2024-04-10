@@ -4,7 +4,7 @@ from PyQt6.QtGui import QPixmap, QIcon, QAction, QIntValidator
 from ImageViewer import ImageViewer
 from HoverButton import HoverButton
 
-class ButtonLayer(QWidget):
+class CropWindow_ButtonLayout(QWidget):
     flip_v_clicked = pyqtSignal()
     flip_h_clicked = pyqtSignal()
     rotate_r_clicked = pyqtSignal()
@@ -44,6 +44,7 @@ class ButtonLayer(QWidget):
         spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout.addItem(spacer)
         layout.addLayout(self.crop_layout)
+        layout.addItem(spacer)
 
     def add_crop_edit_line(self,placeholder,signal_function):
         """
@@ -92,20 +93,18 @@ class ButtonLayer(QWidget):
         self.crop_width_edit.setText(str(int(width)))
         self.crop_height_edit.setText(str(int(height)))
     
-class CropWindow(QMainWindow):
+class CropWindow(QWidget):
     crop_confirmed = pyqtSignal(QPixmap)
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Image Editor")
+        self.setWindowTitle("Crop Window")
         self.setGeometry(100, 100, 800, 600)
 
-        # Create ImageViewer instance
+        # Assuming ImageViewer and CropWindow_ButtonLayout are defined elsewhere
         self.image_viewer = ImageViewer()
         self.pixmap_image_orig = None
-
-        # Create ButtonLayer instance
-        self.button_layer = ButtonLayer()
+        self.button_layer = CropWindow_ButtonLayout()
 
         # Connect ButtonLayer signals to slot methods
         self.button_layer.flip_v_clicked.connect(self.flip_vertical)
@@ -113,38 +112,32 @@ class CropWindow(QMainWindow):
         self.button_layer.rotate_r_clicked.connect(self.rotate_right)
         self.button_layer.rotate_l_clicked.connect(self.rotate_left)
 
-        # Create a central widget and set the layout
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        
-        # Main layout for the central widget
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.addWidget(self.button_layer)  # Add button layer to the main layout
-        main_layout.addWidget(self.image_viewer)  # Add image viewer to the main layout
+        # Create the main layout for the widget
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.image_viewer)
+        main_layout.addWidget(self.button_layer)
 
-        # Create layout for confirmation buttons
+        # Layout for confirmation buttons
         confirmation_layout = QHBoxLayout()
-        main_layout.addLayout(confirmation_layout)
-
-        # Add spacer item to push buttons to the right
         spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         confirmation_layout.addItem(spacer)
 
-        # Create OK and Cancel buttons with fixed sizes
         ok_button = QPushButton("OK")
         ok_button.setFixedSize(100, 30)
         ok_button.clicked.connect(self.ok_pressed)
+        
         cancel_button = QPushButton("Cancel")
         cancel_button.setFixedSize(100, 30)
         cancel_button.clicked.connect(self.cancel_pressed)
-        # Add buttons to the confirmation layout
+        
         confirmation_layout.addWidget(ok_button)
         confirmation_layout.addWidget(cancel_button)
-        
-        # Connect the new signal to a method
+        main_layout.addLayout(confirmation_layout)
+
+        # Connect new signal to a method
         self.button_layer.crop_rectangle_changed.connect(self.update_image_viewer_crop)
-        # Connect the signal to the slot
         self.image_viewer.crop_rectangle_changed.connect(self.update_crop_info_in_button_layer)
+
 
     def update_crop_info_in_button_layer(self, crop_rect):
         # Assuming the crop_rect is a QRectF or similar
