@@ -1,11 +1,13 @@
+
+import numpy as np
+
 from PyQt6.QtGui import QWheelEvent
 from PyQt6.QtCore import pyqtSlot,pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, QPointF, QSizeF
 from PyQt6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem, QFileDialog, QMenu, QGraphicsProxyWidget, QRubberBand
 from PyQt6.QtGui import QPixmap, QCursor, QAction, QPen, QImage, QPainterPath, QTransform, QColor
 
-
 from HoverButton import HoverButton
-import numpy as np
+import ImageProcessingAlgorithms
 
 class ImageViewer(QGraphicsView):
     crop_rectangle_changed = pyqtSignal(QRectF)
@@ -77,6 +79,12 @@ class ImageViewer(QGraphicsView):
         self._crop_mode = enabled
         self.setCursor(Qt.CursorShape.CrossCursor)
 
+    def reset_rect(self):
+        if self.cropRect is not None:
+            self.scene.removeItem(self.cropRect)
+            self.cropRect.setRect(self.pixmap_item.sceneBoundingRect())
+            if self.update_rect():
+                self.crop_rectangle_changed.emit(self.get_current_crop_rect())
 
     def showContextMenu(self, pos):
         self.contextMenu.exec(QCursor.pos())
@@ -91,7 +99,7 @@ class ImageViewer(QGraphicsView):
         clipboard = QApplication.clipboard()
         if clipboard.mimeData().hasImage():
             pixmap = clipboard.pixmap()
-            self.load_new_pixmap(pixmap)
+            self.show_pixmap(pixmap)
 
     def saveImage(self):
         if self.pixmap_item is not None:
@@ -152,7 +160,7 @@ class ImageViewer(QGraphicsView):
                 self.scale(1 / width_ratio, 1 / height_ratio)
         print("Original size.")
     
-    def load_new_pixmap(self, new_pixmap):
+    def show_pixmap(self, new_pixmap):
         if not new_pixmap.isNull():
             # Assign new_pixmap to current_pixmap if current_pixmap is None
             if self.current_pixmap is None:
@@ -180,13 +188,19 @@ class ImageViewer(QGraphicsView):
             # self.cropRect = QGraphicsRectItem()
             # self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
             self.scene.addItem(self.cropRect)
-        
+    
+    def show_new_pixmap(self, pixmap):
+        self.original_pixmap = pixmap
+        self.previous_pixmap = pixmap
+        self.current_pixmap = pixmap
+        self.show_pixmap(pixmap)
+
     def open_new_image(self, imagePath):
         pixmap = QPixmap(imagePath)
         self.original_pixmap = pixmap
         self.previous_pixmap = pixmap
         self.current_pixmap = pixmap
-        self.load_new_pixmap(pixmap)
+        self.show_pixmap(pixmap)
         
     def setImage(self, image):
         if type(image) is QPixmap:
@@ -204,7 +218,7 @@ class ImageViewer(QGraphicsView):
         else:
             raise RuntimeError("ImageViewer.setImage: Argument must be a QImage, QPixmap, or numpy.ndarray.")
         
-        self.load_new_pixmap(pixmap)
+        self.show_pixmap(pixmap)
     
     def crop_image(self, rect):
         pixmap = self.get_current_pixmap()
@@ -214,7 +228,7 @@ class ImageViewer(QGraphicsView):
             return None
         # Crop the pixmap using the QRect. Note that QRect should be in the pixmap's coordinate system.
         cropped_pixmap = pixmap.copy(rect.toRect())
-        self.load_new_pixmap(cropped_pixmap)
+        self.show_pixmap(cropped_pixmap)
 
     def wheelEvent(self, event: QWheelEvent):
         if event.angleDelta().y() > 0:
@@ -277,7 +291,9 @@ class ImageViewer(QGraphicsView):
                 if self.cropRect is None:
                     self.cropRect = QGraphicsRectItem()
                     self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
-                    self.scene.addItem(self.cropRect)
+                # if self.scene.itemAt(1) is not self.cropRect :
+                self.scene.addItem(self.cropRect)
+
                 self.cropRect.setRect(QRectF(self.rect_start_point, self.rect_start_point))
         else:
             # Start dragging a region zoom box?
@@ -313,7 +329,7 @@ class ImageViewer(QGraphicsView):
         return rect_changed
         
     def mouseMoveEvent(self, event):
-        print(event.button())
+        # print(event.button())
         super().mouseMoveEvent(event)
         if self._isPanning:
             # Calculate the movement delta in the view's coordinate system
@@ -372,6 +388,10 @@ class ImageViewer(QGraphicsView):
                 self.setDragMode(QGraphicsView.DragMode.NoDrag)
                 self._isPanning = False
     
+    
+    def get_original_pixmap(self):
+        return self.original_pixmap
+    
     def get_current_pixmap(self):
         return self.current_pixmap
     
@@ -388,7 +408,7 @@ class ImageViewer(QGraphicsView):
             # Flip the pixmap vertically
             self.current_pixmap = self.current_pixmap.transformed(QTransform().scale(1, -1))
             # Update the pixmap item with the new pixmap
-            self.load_new_pixmap(self.current_pixmap)
+            self.show_pixmap(self.current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the flipped image
 
     def flip_horizontal(self):
@@ -396,7 +416,7 @@ class ImageViewer(QGraphicsView):
             # Flip the pixmap horizontally
             self.current_pixmap = self.current_pixmap.transformed(QTransform().scale(-1, 1))
             # Update the pixmap item with the new pixmap
-            self.load_new_pixmap(self.current_pixmap)
+            self.show_pixmap(self.current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the flipped image
 
     def rotate_left(self):
@@ -404,7 +424,7 @@ class ImageViewer(QGraphicsView):
             # Rotate the pixmap 90 degrees counter-clockwise
             self.current_pixmap = self.current_pixmap.transformed(QTransform().rotate(-90))
             # Update the pixmap item with the new pixmap
-            self.load_new_pixmap(self.current_pixmap)
+            self.show_pixmap(self.current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the rotated image
 
     def rotate_right(self):
@@ -412,5 +432,22 @@ class ImageViewer(QGraphicsView):
             # Rotate the pixmap 90 degrees clockwise
             self.current_pixmap = self.current_pixmap.transformed(QTransform().rotate(90))
             # Update the pixmap item with the new pixmap
-            self.load_new_pixmap(self.current_pixmap)
+            self.show_pixmap(self.current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the rotated image
+
+    def adjust_contrast_brightness(self, contrast_value, brightness_value, gamma_value):
+        print("Adjust Contrast: %d  Brightness: %d  Gamma: %.2f" % (contrast_value, brightness_value, gamma_value))
+        
+        image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
+        image_cv = ImageProcessingAlgorithms.adjust_contrast_brightness(image_cv, contrast_value, brightness_value, gamma_value)
+        image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
+        self.show_pixmap(image_pixmap)
+
+    def convert_pixmap_to_opencv_image(self, pixmap):
+        return ImageProcessingAlgorithms.convertQImageToArray(pixmap.toImage())
+
+    def convert_opencv_image_to_pixmap(self, cv_image):
+        return QPixmap.fromImage(ImageProcessingAlgorithms.convertArrayToQImage(cv_image))
+    
+            
+    

@@ -94,7 +94,7 @@ class CropWindow_ButtonLayout(QWidget):
         self.crop_height_edit.setText(str(int(height)))
     
 class CropWindow(QWidget):
-    crop_confirmed = pyqtSignal(QPixmap)
+    editing_confirmed = pyqtSignal(QPixmap, str)
 
     def __init__(self):
         super().__init__()
@@ -149,9 +149,11 @@ class CropWindow(QWidget):
         self.image_viewer.set_crop_rectangle(x, y, width, height)
 
     def set_image(self, pixmap_image):
+        
         self.pixmap_image_orig = pixmap_image
-        self.image_viewer.load_new_pixmap(pixmap_image)
+        self.image_viewer.show_new_pixmap(pixmap_image)
         self.image_viewer.set_crop_mode(True)
+        self.image_viewer.reset_rect()
 
     def flip_vertical(self):
         if self.image_viewer.get_current_pixmap() is not None:
@@ -183,7 +185,7 @@ class CropWindow(QWidget):
         # self.image_viewer.get_current_crop_rect()
         self.image_viewer.crop_image(self.image_viewer.get_current_crop_rect())
 
-        self.crop_confirmed.emit(self.image_viewer.get_current_pixmap())
+        self.editing_confirmed.emit(self.image_viewer.get_current_pixmap(), "Crop and Rotate")
         self.close() #to close the window
 
     def cancel_pressed(self):

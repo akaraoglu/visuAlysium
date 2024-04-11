@@ -4,6 +4,7 @@ from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize
 from ImageViewer import ImageViewer
 from HoverButton import HoverButton
 from CropWindow import CropWindow
+from LightingWindow import LightingWindow
 
 
 class ImageEditor_ButtonLayout(QWidget):
@@ -128,11 +129,13 @@ class ImageViewerWindow(QMainWindow):
         self.history_widget = HistoryWidget()  # Create instance of HistoryWidget
         self.buttons_layer = ImageEditor_ButtonLayout()
         
-        self.cropWindow = CropWindow()
-        self.cropWindow.crop_confirmed.connect(self.cropping_confirmed)
+        self.crop_window = CropWindow()
+        self.crop_window.editing_confirmed.connect(self.editing_confirmed)
+        self.lighting_window = LightingWindow()
+        self.lighting_window.editing_confirmed.connect(self.editing_confirmed)
         
-        main_layout = QGridLayout(central_widget)
 
+        main_layout = QGridLayout(central_widget)
         image_layout = QVBoxLayout()
         image_layout.addWidget(self.image_viewer)
 
@@ -155,11 +158,14 @@ class ImageViewerWindow(QMainWindow):
 
         # Connect button signal to slot
         self.buttons_layer.button_crop_clicked.connect(self.crop_button_clicked)
+        self.buttons_layer.button_brightness_clicked.connect(self.brightness_button_clicked)
+        
+        
         self.history_widget.show_image_requested.connect(self.show_image_from_history)
         self.history_widget.delete_image_requested.connect(self.delete_image_from_history)
 
     def show_image_from_history(self, pixmap):
-        self.image_viewer.load_new_pixmap(pixmap)  # Assuming your ImageViewer widget has a method to set a QPixmap
+        self.image_viewer.show_pixmap(pixmap)  # Assuming your ImageViewer widget has a method to set a QPixmap
 
     def delete_image_from_history(self, index):
         # Handle the deletion of an image from the history
@@ -171,16 +177,17 @@ class ImageViewerWindow(QMainWindow):
         self.history_widget.update_history_list(self.image_viewer.get_current_pixmap(), "Original Image")
 
     def crop_button_clicked(self):
-        self.cropWindow.show()
-        self.cropWindow.set_image(self.image_viewer.get_current_pixmap())
-        # Handle edit button click event
-        print("Crop Window event.")
-        pass  # Placeholder, put your code here to handle the edit button click
-    
-    def cropping_confirmed(self, pixmap):
-        print("Cropping confirmed!")
-        self.image_viewer.load_new_pixmap(pixmap)
-        self.history_widget.update_history_list(pixmap,"Crop and rotate.")
+        self.crop_window.show()
+        self.crop_window.set_image(self.image_viewer.get_current_pixmap())
+        
+    def brightness_button_clicked(self):
+        self.lighting_window.show()
+        self.lighting_window.set_image(self.image_viewer.get_current_pixmap())
+
+    def editing_confirmed(self, pixmap, description):
+        print("Editing confirmed!")
+        self.image_viewer.show_pixmap(pixmap)
+        self.history_widget.update_history_list(pixmap, description)
 
         # print(f"Rectangle Coordinates: Top Left ({rect.topLeft().x()}, {rect.topLeft().y()}) - Bottom Right ({rect.bottomRight().x()}, {rect.bottomRight().y()})")
         # print(f"Rectangle Size: Width {rect.width()} - Height {rect.height()}")
