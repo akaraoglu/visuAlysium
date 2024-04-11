@@ -36,7 +36,8 @@ class ImageViewer(QGraphicsView):
         self.previous_pixmap = None
         self.original_pixmap = None
 
-        self.cropRect = None
+        self.cropRect = QGraphicsRectItem()
+        self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
          
         # # Add buttons
         self.button_list = []
@@ -179,7 +180,6 @@ class ImageViewer(QGraphicsView):
             self.pixmap_item = QGraphicsPixmapItem(self.current_pixmap)
             self.scene.addItem(self.pixmap_item)
             self.setSceneRect(QRectF(new_pixmap.rect()))  # Set scene size to image size
-            self.show_image_initial_size()
 
         # show the rectangle over the image.
         if self.cropRect is not None:
@@ -188,12 +188,13 @@ class ImageViewer(QGraphicsView):
             # self.cropRect = QGraphicsRectItem()
             # self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
             self.scene.addItem(self.cropRect)
-    
+
     def show_new_pixmap(self, pixmap):
         self.original_pixmap = pixmap
         self.previous_pixmap = pixmap
         self.current_pixmap = pixmap
         self.show_pixmap(pixmap)
+        self.show_image_initial_size()
 
     def open_new_image(self, imagePath):
         pixmap = QPixmap(imagePath)
@@ -201,6 +202,7 @@ class ImageViewer(QGraphicsView):
         self.previous_pixmap = pixmap
         self.current_pixmap = pixmap
         self.show_pixmap(pixmap)
+        self.show_image_initial_size()
         
     def setImage(self, image):
         if type(image) is QPixmap:
@@ -219,6 +221,7 @@ class ImageViewer(QGraphicsView):
             raise RuntimeError("ImageViewer.setImage: Argument must be a QImage, QPixmap, or numpy.ndarray.")
         
         self.show_pixmap(pixmap)
+        self.show_image_initial_size()
     
     def crop_image(self, rect):
         pixmap = self.get_current_pixmap()
@@ -229,6 +232,7 @@ class ImageViewer(QGraphicsView):
         # Crop the pixmap using the QRect. Note that QRect should be in the pixmap's coordinate system.
         cropped_pixmap = pixmap.copy(rect.toRect())
         self.show_pixmap(cropped_pixmap)
+        self.show_image_initial_size()
 
     def wheelEvent(self, event: QWheelEvent):
         if event.angleDelta().y() > 0:
@@ -288,9 +292,6 @@ class ImageViewer(QGraphicsView):
                 self._startPosPanning = event.pos()
             elif (event.button() == Qt.MouseButton.LeftButton):
                 self.rect_start_point = self.mapToScene(event.pos())
-                if self.cropRect is None:
-                    self.cropRect = QGraphicsRectItem()
-                    self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
                 # if self.scene.itemAt(1) is not self.cropRect :
                 self.scene.addItem(self.cropRect)
 
@@ -395,6 +396,9 @@ class ImageViewer(QGraphicsView):
     def get_current_pixmap(self):
         return self.current_pixmap
     
+    def get_previous_pixmap(self):
+        return self.previous_pixmap
+    
     def get_current_crop_rect(self):
         return self.cropRect.rect()
     
@@ -436,12 +440,13 @@ class ImageViewer(QGraphicsView):
             self.show_image_initial_size()  # Adjust the view to fit the rotated image
 
     def adjust_contrast_brightness(self, contrast_value, brightness_value, gamma_value):
-        print("Adjust Contrast: %d  Brightness: %d  Gamma: %.2f" % (contrast_value, brightness_value, gamma_value))
+        print("Adjust Contrast: %.2f  Brightness: %.2f  Gamma: %.2f" % (contrast_value, brightness_value, gamma_value))
         
         image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
         image_cv = ImageProcessingAlgorithms.adjust_contrast_brightness(image_cv, contrast_value, brightness_value, gamma_value)
         image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
-        self.show_pixmap(image_pixmap)
+        self.current_pixmap = image_pixmap
+        self.show_pixmap(self.current_pixmap)
 
     def convert_pixmap_to_opencv_image(self, pixmap):
         return ImageProcessingAlgorithms.convertQImageToArray(pixmap.toImage())
