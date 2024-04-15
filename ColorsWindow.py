@@ -5,17 +5,16 @@ from ImageViewer import ImageViewer
 
 from WidgetUtils import DoubleClickSlider
 
+colors_slider_list = [ "Temperature",
+                "Saturation",
+                "Hue",
+                "R",
+                "G",
+                "B"]
 
-colors_slider_list = [ "Brightness",
-                "Contrast",
-                "Gamma",
-                "Shadows",
-                "Highlights"]
-
-class LightingWindow_ButtonLayout(QWidget):
+class ColorsWindow_ButtonLayout(QWidget):
     def __init__(self):
         super().__init__()
-        
         self.button_size = 60
         self.icon_size = 40
 
@@ -43,9 +42,6 @@ class LightingWindow_ButtonLayout(QWidget):
         layout.addItem(spacer)
         layout.addLayout(self.lighting_layout)
         layout.addItem(spacer)
-
-        self.sliders["Shadows"].setDisabled(True) # NOT IMPLEMENTED 
-        self.sliders["Highlights"].setDisabled(True) # NOT IMPLEMENTED 
     
     def reset_sliders(self):
         for i, (label, slider) in enumerate(self.sliders.items()):
@@ -55,18 +51,18 @@ class LightingWindow_ButtonLayout(QWidget):
         for i, (label, slider) in enumerate(self.sliders.items()):
             print(label, ":" , slider.value())
 
-class LightingWindow(QWidget):
+class ColorsWindow(QWidget):
     editing_confirmed = pyqtSignal(QPixmap, str)
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Lighting Window")
+        self.setWindowTitle("Colors Window")
         # self.setGeometry(100, 100, 800, 600)
 
         # Assuming ImageViewer and LightingWindow_ButtonLayout are defined elsewhere
         self.image_viewer = ImageViewer()
         self.pixmap_image_orig = None
-        self.slider_layer = LightingWindow_ButtonLayout()
+        self.slider_layer = ColorsWindow_ButtonLayout()
 
         # Create the main layout for the widget
         main_layout = QVBoxLayout(self)
@@ -95,13 +91,14 @@ class LightingWindow(QWidget):
         confirmation_layout.addWidget(ok_button)
         confirmation_layout.addWidget(cancel_button)
         main_layout.addLayout(confirmation_layout)
-
+  
         # Connect slider value changes to functions directly
-        self.slider_layer.sliders["Brightness"].valueChanged.connect(self.adjust_brightness)
-        self.slider_layer.sliders["Contrast"].valueChanged.connect(self.adjust_contrast)
-        self.slider_layer.sliders["Shadows"].valueChanged.connect(self.adjust_shadows)
-        self.slider_layer.sliders["Highlights"].valueChanged.connect(self.adjust_highlights)
-        self.slider_layer.sliders["Gamma"].valueChanged.connect(self.adjust_gamma)
+        self.slider_layer.sliders["Temperature"].valueChanged.connect(self.adjust_temperature)
+        self.slider_layer.sliders["Saturation"].valueChanged.connect(self.adjust_saturation)
+        self.slider_layer.sliders["Hue"].valueChanged.connect(self.adjust_hue)
+        self.slider_layer.sliders["R"].valueChanged.connect(self.adjust_RGB)
+        self.slider_layer.sliders["G"].valueChanged.connect(self.adjust_RGB)
+        self.slider_layer.sliders["B"].valueChanged.connect(self.adjust_RGB)
         
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
@@ -149,32 +146,28 @@ class LightingWindow(QWidget):
         self.close() #to close the window
 
     # Define placeholder functions for slider adjustments
-    def adjust_brightness(self, value):
+    def adjust_temperature(self, value):
         self.read_values_from_sliders()
-        self.image_viewer.adjust_lightning(self.contrast_value, self.brightness_value, self.gamma_value)
+        self.image_viewer.adjust_colors(self.temperature_value, self.saturation_value, self.hue_value, self.red_value, self.green_value, self.blue_value)
 
-    def adjust_contrast(self, value):
+    def adjust_saturation(self, value):
         self.read_values_from_sliders()
-        self.image_viewer.adjust_lightning(self.contrast_value, self.brightness_value, self.gamma_value)
+        self.image_viewer.adjust_colors(self.temperature_value, self.saturation_value, self.hue_value, self.red_value, self.green_value, self.blue_value)
 
-    def adjust_shadows(self, value):
+    def adjust_hue(self, value):
         self.read_values_from_sliders()
-        # Placeholder for shadows adjustment logic
-        pass
+        self.image_viewer.adjust_colors(self.temperature_value, self.saturation_value, self.hue_value, self.red_value, self.green_value, self.blue_value)
 
-    def adjust_highlights(self, value):
+    def adjust_RGB(self, value):
         self.read_values_from_sliders()
-        # Placeholder for highlights adjustment logic
-        pass
-
-    def adjust_gamma(self, value):
-        self.read_values_from_sliders()
-        self.image_viewer.adjust_lightning(self.contrast_value, self.brightness_value, self.gamma_value)
+        self.image_viewer.adjust_colors(self.temperature_value, self.saturation_value, self.hue_value, self.red_value, self.green_value, self.blue_value)
 
     def read_values_from_sliders(self):
         # self.slider_layer.print_values()
-        self.contrast_value = 1- self.slider_layer.sliders["Contrast"].value()/50.0
-        self.brightness_value = self.slider_layer.sliders["Brightness"].value()/50.0 - 1
-        self.gamma_value = 2 - self.slider_layer.sliders["Gamma"].value()/50.0
-        self.shadows_value = self.slider_layer.sliders["Shadows"].value()/50.0
-        self.highlights_value = self.slider_layer.sliders["Highlights"].value()/50.0
+
+        self.temperature_value  = self.slider_layer.sliders["Temperature"].value()  /50.0
+        self.saturation_value   = self.slider_layer.sliders["Saturation"].value()   /50.0
+        self.hue_value          = 1 - self.slider_layer.sliders["Hue"].value()      /50.0
+        self.red_value          = self.slider_layer.sliders["R"].value()            /50.0
+        self.green_value        = self.slider_layer.sliders["G"].value()            /50.0
+        self.blue_value         = self.slider_layer.sliders["B"].value()            /50.0

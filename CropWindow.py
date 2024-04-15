@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QMainWindow,  QVBoxLayout, QHBoxLayout, QWidget, QLa
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, QPointF, QSizeF
 from PyQt6.QtGui import QPixmap, QIcon, QAction, QIntValidator
 from ImageViewer import ImageViewer
-from HoverButton import HoverButton
+from WidgetUtils import HoverButton
 
 class CropWindow_ButtonLayout(QWidget):
     flip_v_clicked = pyqtSignal()
@@ -151,8 +151,9 @@ class CropWindow(QWidget):
     def set_image(self, pixmap_image):
         
         self.pixmap_image_orig = pixmap_image
-        self.image_viewer.show_new_pixmap(pixmap_image)
         self.image_viewer.set_crop_mode(True)
+        self.image_viewer.show_new_pixmap(pixmap_image)
+        
         self.image_viewer.reset_rect()
 
     def flip_vertical(self):

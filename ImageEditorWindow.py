@@ -2,10 +2,11 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QGridLayout, QPushButton,
 from PyQt6.QtGui import QPixmap, QIcon, QMouseEvent
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize
 from ImageViewer import ImageViewer
-from HoverButton import HoverButton
+from WidgetUtils import HoverButton
 from CropWindow import CropWindow
-from LightingWindow import LightingWindow
 
+from LightingWindow import LightingWindow
+from ColorsWindow import ColorsWindow
 
 class ImageEditor_ButtonLayout(QWidget):
     
@@ -133,7 +134,8 @@ class ImageViewerWindow(QMainWindow):
         self.crop_window.editing_confirmed.connect(self.editing_confirmed)
         self.lighting_window = LightingWindow()
         self.lighting_window.editing_confirmed.connect(self.editing_confirmed)
-        
+        self.colors_window = ColorsWindow()
+        self.colors_window.editing_confirmed.connect(self.editing_confirmed)
 
         main_layout = QGridLayout(central_widget)
         image_layout = QVBoxLayout()
@@ -159,7 +161,7 @@ class ImageViewerWindow(QMainWindow):
         # Connect button signal to slot
         self.buttons_layer.button_crop_clicked.connect(self.crop_button_clicked)
         self.buttons_layer.button_brightness_clicked.connect(self.brightness_button_clicked)
-        
+        self.buttons_layer.button_colors_clicked.connect(self.colors_button_clicked)
         
         self.history_widget.show_image_requested.connect(self.show_image_from_history)
         self.history_widget.delete_image_requested.connect(self.delete_image_from_history)
@@ -173,8 +175,9 @@ class ImageViewerWindow(QMainWindow):
 
     def show_new_image(self,image_path):
         self.history_widget.clearHistory()
-        self.image_viewer.open_new_image(image_path) 
+        self.image_viewer.open_new_image(image_path)
         self.history_widget.update_history_list(self.image_viewer.get_current_pixmap(), "Original Image")
+        self.image_viewer.show_image_initial_size()
 
     def crop_button_clicked(self):
         self.crop_window.show()
@@ -183,6 +186,10 @@ class ImageViewerWindow(QMainWindow):
     def brightness_button_clicked(self):
         self.lighting_window.show()
         self.lighting_window.set_image(self.image_viewer.get_current_pixmap())
+
+    def colors_button_clicked(self):
+        self.colors_window.show()
+        self.colors_window.set_image(self.image_viewer.get_current_pixmap())
 
     def editing_confirmed(self, pixmap, description):
         print("Editing confirmed!")

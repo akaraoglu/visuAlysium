@@ -6,7 +6,7 @@ from PyQt6.QtCore import pyqtSlot,pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, 
 from PyQt6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem, QFileDialog, QMenu, QGraphicsProxyWidget, QRubberBand
 from PyQt6.QtGui import QPixmap, QCursor, QAction, QPen, QImage, QPainterPath, QTransform, QColor
 
-from HoverButton import HoverButton
+from WidgetUtils import HoverButton
 import ImageProcessingAlgorithms
 
 class ImageViewer(QGraphicsView):
@@ -178,16 +178,20 @@ class ImageViewer(QGraphicsView):
                 self.scene.removeItem(self.pixmap_item)
             
             self.pixmap_item = QGraphicsPixmapItem(self.current_pixmap)
-            self.scene.addItem(self.pixmap_item)
-            self.setSceneRect(QRectF(new_pixmap.rect()))  # Set scene size to image size
+            self.setSceneRect(QRectF(self.current_pixmap.rect()))  # Set scene size to image size
+            self.scene.addItem(self.pixmap_item)            
+            # self.zoom_in()
 
         # show the rectangle over the image.
         if self.cropRect is not None:
-            self.update_rect()
+            self.reset_rect()
             self.scene.removeItem(self.cropRect)
             # self.cropRect = QGraphicsRectItem()
             # self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
-            self.scene.addItem(self.cropRect)
+            if self._crop_mode:
+                self.scene.addItem(self.cropRect)
+                self.crop_rectangle_changed.emit(self.get_current_crop_rect())
+
 
     def show_new_pixmap(self, pixmap):
         self.original_pixmap = pixmap
@@ -195,6 +199,7 @@ class ImageViewer(QGraphicsView):
         self.current_pixmap = pixmap
         self.show_pixmap(pixmap)
         self.show_image_initial_size()
+        # self.reset_rect()
 
     def open_new_image(self, imagePath):
         pixmap = QPixmap(imagePath)
@@ -203,7 +208,8 @@ class ImageViewer(QGraphicsView):
         self.current_pixmap = pixmap
         self.show_pixmap(pixmap)
         self.show_image_initial_size()
-        
+        # self.reset_rect()
+
     def setImage(self, image):
         if type(image) is QPixmap:
             pixmap = image
@@ -310,6 +316,17 @@ class ImageViewer(QGraphicsView):
         # event.accept()
         QGraphicsView.mousePressEvent(self, event)
     
+    def reset_rect(self):
+        rect_changed = False
+        rect = self.get_current_crop_rect()
+        # Adjust rect to ensure it's within the image boundaries
+        rect.setLeft(self.sceneRect().left())
+        rect.setRight(self.sceneRect().right())
+        rect.setTop(self.sceneRect().top())
+        rect.setBottom(self.sceneRect().bottom())
+        self.cropRect.setRect(rect)
+        return rect_changed
+    
     def update_rect(self):
         rect_changed = False
         rect = self.get_current_crop_rect()
@@ -414,6 +431,7 @@ class ImageViewer(QGraphicsView):
             # Update the pixmap item with the new pixmap
             self.show_pixmap(self.current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the flipped image
+            self.reset_rect()
 
     def flip_horizontal(self):
         if self.current_pixmap:
@@ -422,6 +440,7 @@ class ImageViewer(QGraphicsView):
             # Update the pixmap item with the new pixmap
             self.show_pixmap(self.current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the flipped image
+            self.reset_rect()
 
     def rotate_left(self):
         if self.current_pixmap:
@@ -430,6 +449,7 @@ class ImageViewer(QGraphicsView):
             # Update the pixmap item with the new pixmap
             self.show_pixmap(self.current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the rotated image
+            self.reset_rect()
 
     def rotate_right(self):
         if self.current_pixmap:
@@ -438,15 +458,36 @@ class ImageViewer(QGraphicsView):
             # Update the pixmap item with the new pixmap
             self.show_pixmap(self.current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the rotated image
+            self.reset_rect()
 
-    def adjust_contrast_brightness(self, contrast_value, brightness_value, gamma_value):
+    def adjust_lightning(self, contrast_value, brightness_value, gamma_value):
         print("Adjust Contrast: %.2f  Brightness: %.2f  Gamma: %.2f" % (contrast_value, brightness_value, gamma_value))
         
         image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
-        image_cv = ImageProcessingAlgorithms.adjust_contrast_brightness(image_cv, contrast_value, brightness_value, gamma_value)
+        image_cv = ImageProcessingAlgorithms.adjust_contrast_brightness_gamma(image_cv, contrast_value, brightness_value, gamma_value)
         image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
         self.current_pixmap = image_pixmap
         self.show_pixmap(self.current_pixmap)
+
+    def adjust_colors(self, temperature_value, saturation_value, hue_value, red_value, green_value, blue_value):
+        print("Adjust Colors : temperature_value:  %.2f, saturation_value:  %.2f, hue_value:  %.2f, red_value:  %.2f, green_value:  %.2f, blue_value: %.2f" % (temperature_value, saturation_value, hue_value, red_value, green_value, blue_value))
+        
+        temperature_value = np.clip(temperature_value*5500 + 1050, 1000, 12000)
+        print("Adjust Temperature: %.2f Kelvin" % (temperature_value))
+        
+        hue_value = hue_value*180
+        print("Hue shift: %.2f degrees" % (hue_value))
+        
+
+        image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
+        image_cv = ImageProcessingAlgorithms.change_color_temperature(image_cv, temperature_value, red_value, green_value, blue_value)
+        image_cv = ImageProcessingAlgorithms.adjust_saturation_hue(image_cv, saturation_value, hue_value)
+        
+        image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
+        self.current_pixmap = image_pixmap
+        self.show_pixmap(self.current_pixmap)
+    
+    
 
     def convert_pixmap_to_opencv_image(self, pixmap):
         return ImageProcessingAlgorithms.convertQImageToArray(pixmap.toImage())

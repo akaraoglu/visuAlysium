@@ -133,11 +133,11 @@ class MainWindow(QMainWindow):
 
     def open_image_menu(self, position):
         menu = QMenu()
-        open_image_action = QAction("Open Image", self)
-        open_image_action.triggered.connect(lambda: self.open_image())
+        open_image_action = QAction("Show Image", self)
+        open_image_action.triggered.connect(lambda: self.image_double_clicked(self.image_list_widget.currentItem()))
         menu.addAction(open_image_action)
         menu.exec(self.image_list_widget.viewport().mapToGlobal(position))
-
+        
     def open_menu(self, position):
         menu = QMenu()
         show_images_action = QAction("Show Images", self)
