@@ -119,13 +119,11 @@ class HistoryWidget(QWidget):
                 else:
                     self.show_image_requested.emit(self.original_pixmaps[row-1])
 
-class ImageViewerWindow(QMainWindow):
+class ImageViewerWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Image Viewer Window")
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-
+      
         self.image_viewer = ImageViewer()
         self.history_widget = HistoryWidget()  # Create instance of HistoryWidget
         self.buttons_layer = ImageEditor_ButtonLayout()
@@ -137,7 +135,7 @@ class ImageViewerWindow(QMainWindow):
         self.colors_window = ColorsWindow()
         self.colors_window.editing_confirmed.connect(self.editing_confirmed)
 
-        main_layout = QGridLayout(central_widget)
+        main_layout = QGridLayout(self)
         image_layout = QVBoxLayout()
         image_layout.addWidget(self.image_viewer)
 
@@ -165,6 +163,25 @@ class ImageViewerWindow(QMainWindow):
         
         self.history_widget.show_image_requested.connect(self.show_image_from_history)
         self.history_widget.delete_image_requested.connect(self.delete_image_from_history)
+        
+        # Adjust window size to half of the screen size
+        screen = QApplication.primaryScreen()
+        screen_size = screen.size()
+
+        screenWidth = screen_size.width()
+        screenHeight = screen_size.height()
+
+        # Calculate width and height
+        width = screenWidth // 2
+        height = (2 * screenHeight) // 3
+
+        # Calculate x and y positions to center the window
+        x = (screenWidth - width) // 2
+        y = (screenHeight - height) // 2
+
+        # Set geometry to center the window with desired size
+        self.setGeometry(x, y, width, height)
+
 
     def show_image_from_history(self, pixmap):
         self.image_viewer.show_pixmap(pixmap)  # Assuming your ImageViewer widget has a method to set a QPixmap
@@ -176,6 +193,8 @@ class ImageViewerWindow(QMainWindow):
     def show_new_image(self,image_path):
         self.history_widget.clearHistory()
         self.image_viewer.open_new_image(image_path)
+        self.image_viewer.show_image_fit_to_screen()
+        # self.image_viewer.open_new_image(image_path)
         self.history_widget.update_history_list(self.image_viewer.get_current_pixmap(), "Original Image")
         self.image_viewer.show_image_initial_size()
 

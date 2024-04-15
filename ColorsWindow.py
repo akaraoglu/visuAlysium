@@ -4,6 +4,7 @@ from PyQt6.QtGui import QPixmap
 from ImageViewer import ImageViewer
 
 from WidgetUtils import DoubleClickSlider
+# from ImageEditingWindow import ImageEditingsWindow
 
 colors_slider_list = [ "Temperature",
                 "Saturation",
@@ -12,7 +13,7 @@ colors_slider_list = [ "Temperature",
                 "G",
                 "B"]
 
-class ColorsWindow_ButtonLayout(QWidget):
+class ColorsWindow_SliderLayout(QWidget):
     def __init__(self):
         super().__init__()
         self.button_size = 60
@@ -62,7 +63,8 @@ class ColorsWindow(QWidget):
         # Assuming ImageViewer and LightingWindow_ButtonLayout are defined elsewhere
         self.image_viewer = ImageViewer()
         self.pixmap_image_orig = None
-        self.slider_layer = ColorsWindow_ButtonLayout()
+        self.slider_layer = ColorsWindow_SliderLayout()
+        self.create_sliders()
 
         # Create the main layout for the widget
         main_layout = QVBoxLayout(self)
@@ -92,14 +94,6 @@ class ColorsWindow(QWidget):
         confirmation_layout.addWidget(cancel_button)
         main_layout.addLayout(confirmation_layout)
   
-        # Connect slider value changes to functions directly
-        self.slider_layer.sliders["Temperature"].valueChanged.connect(self.adjust_temperature)
-        self.slider_layer.sliders["Saturation"].valueChanged.connect(self.adjust_saturation)
-        self.slider_layer.sliders["Hue"].valueChanged.connect(self.adjust_hue)
-        self.slider_layer.sliders["R"].valueChanged.connect(self.adjust_RGB)
-        self.slider_layer.sliders["G"].valueChanged.connect(self.adjust_RGB)
-        self.slider_layer.sliders["B"].valueChanged.connect(self.adjust_RGB)
-        
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
         # Adjust window size to half of the screen size
@@ -120,10 +114,22 @@ class ColorsWindow(QWidget):
         # Set geometry to center the window with desired size
         self.setGeometry(x, y, width, height)
 
+    def create_sliders(self):
+        # Connect slider value changes to functions directly
+        self.slider_layer.sliders["Temperature"].valueChanged.connect(self.adjust_temperature)
+        self.slider_layer.sliders["Saturation"].valueChanged.connect(self.adjust_saturation)
+        self.slider_layer.sliders["Hue"].valueChanged.connect(self.adjust_hue)
+        self.slider_layer.sliders["R"].valueChanged.connect(self.adjust_RGB)
+        self.slider_layer.sliders["G"].valueChanged.connect(self.adjust_RGB)
+        self.slider_layer.sliders["B"].valueChanged.connect(self.adjust_RGB)
+
     def set_image(self, pixmap_image):
         self.slider_layer.reset_sliders()
         self.pixmap_image_orig = pixmap_image
-        self.image_viewer.show_new_pixmap(pixmap_image)
+        new_width = 1024
+        new_height = 1024
+        scaled_pixmap = pixmap_image.scaled(new_width, new_height, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.image_viewer.show_new_pixmap(scaled_pixmap)
     
     def hdtsoi_pressed(self):
         print( "HDtSOI", "Showing original image.")
@@ -133,10 +139,11 @@ class ColorsWindow(QWidget):
         print( "HDtSOI", "Showing edited image.")
         self.image_viewer.show_pixmap(self.image_viewer.get_previous_pixmap())
 
-
     def ok_pressed(self):
-
         print( "OK", "Changes have been applied.")
+        self.image_viewer.show_new_pixmap(self.pixmap_image_orig)
+        self.read_values_from_sliders()
+        self.image_viewer.adjust_colors(self.temperature_value, self.saturation_value, self.hue_value, self.red_value, self.green_value, self.blue_value)
         self.editing_confirmed.emit(self.image_viewer.get_current_pixmap(), "Lighting Adjustment")
         self.close() #to close the window
 
@@ -164,7 +171,6 @@ class ColorsWindow(QWidget):
 
     def read_values_from_sliders(self):
         # self.slider_layer.print_values()
-
         self.temperature_value  = self.slider_layer.sliders["Temperature"].value()  /50.0
         self.saturation_value   = self.slider_layer.sliders["Saturation"].value()   /50.0
         self.hue_value          = 1 - self.slider_layer.sliders["Hue"].value()      /50.0

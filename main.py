@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Experimental Image Viewer")
+        self.setWindowTitle("VisuAlysium - Image Editor")
 
         self.initUI()
 
@@ -165,8 +165,8 @@ class MainWindow(QMainWindow):
     
     def image_double_clicked(self, item):
         image_path = item.toolTip()
-        self.image_viewer.show_new_image(image_path)
         self.image_viewer.show()
+        self.image_viewer.show_new_image(image_path)
 
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -177,8 +177,9 @@ class MainWindow(QMainWindow):
         file_dialog = QFileDialog()
         image_path, _ = file_dialog.getOpenFileName(self, "Open Image", QDir.homePath(), "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
         if image_path:
-            self.image_viewer = ImageViewerWindow(image_path)
             self.image_viewer.show()
+            self.image_viewer.show_new_image(image_path)
+
 
     def about(self):
         # Create a QMessageBox
@@ -264,7 +265,7 @@ def main():
     window.setGeometry(int(window_x), int(window_y), int(window_width), int(window_height))
 
     window.show()
-    icon_path = "C:/Users/alika/Desktop/D/workspace/visuAlysium/icons/main_icon.png"
+    icon_path = "icons/main_icon.png"
     app_icon = QIcon(icon_path)
     app.setWindowIcon(app_icon)
     app.setApplicationName("VisuAlysium")

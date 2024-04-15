@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow,  QVBoxLayout, QHBoxLayout, QWidget, QLabel, QSizePolicy, QPushButton, QMessageBox, QSpacerItem, QToolBar, QGridLayout, QLineEdit
+from PyQt6.QtWidgets import QMainWindow,  QVBoxLayout, QHBoxLayout, QWidget, QLabel, QSizePolicy, QPushButton, QMessageBox, QSpacerItem, QToolBar, QGridLayout, QLineEdit, QApplication
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, QPointF, QSizeF
 from PyQt6.QtGui import QPixmap, QIcon, QAction, QIntValidator
 from ImageViewer import ImageViewer
@@ -138,6 +138,25 @@ class CropWindow(QWidget):
         self.button_layer.crop_rectangle_changed.connect(self.update_image_viewer_crop)
         self.image_viewer.crop_rectangle_changed.connect(self.update_crop_info_in_button_layer)
 
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
+
+        # Adjust window size to half of the screen size
+        screen = QApplication.primaryScreen()
+        screen_size = screen.size()
+
+        screenWidth = screen_size.width()
+        screenHeight = screen_size.height()
+
+        # Calculate width and height
+        width = screenWidth // 2
+        height = (2 * screenHeight) // 3
+
+        # Calculate x and y positions to center the window
+        x = (screenWidth - width) // 2
+        y = (screenHeight - height) // 2
+
+        # Set geometry to center the window with desired size
+        self.setGeometry(x, y, width, height)
 
     def update_crop_info_in_button_layer(self, crop_rect):
         # Assuming the crop_rect is a QRectF or similar
