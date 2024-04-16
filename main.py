@@ -5,6 +5,28 @@ from PyQt6.QtGui import QPixmap, QIcon, QAction, QPalette, QColor, QFileSystemMo
 from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QListWidget, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
 from ImageEditorWindow import ImageViewerWindow
 
+
+class ImageListWidget(QListWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.setViewMode(QListWidget.ViewMode.IconMode)  # Set the view mode to IconMode
+        self.setIconSize(QSize(100, 100))  # Set the icon size to 100x100 pixels
+        self.setWordWrap(False)  # Enable word wrap
+        self.setTextElideMode(Qt.TextElideMode.ElideRight)  # Set text elide mode to elide right
+        self.setUniformItemSizes(True)  # Enable uniform item sizes
+        self.setResizeMode(QListWidget.ResizeMode.Adjust)  # Set resize mode to Adjust
+        self.setSpacing(10)  # Set spacing between items
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+   
+    def add_thumbnail(self, icon, image_path):
+        image_file = os.path.basename(image_path)
+        item = QListWidgetItem(icon, image_file)
+        item.setToolTip(image_path)  # Set tooltip to display full file name
+        item.setSizeHint(QSize(100, 120))  # Set a fixed size for the items
+        item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)  # Center align text
+        self.addItem(item)
+    
 # Worker signals class for communicating between threads
 class WorkerSignals(QObject):
     finished = pyqtSignal()
@@ -108,17 +130,8 @@ class MainWindow(QMainWindow):
         desktop_index = self.folder_model.index(desktop_path)
         self.folder_tree_view.setCurrentIndex(desktop_index)
 
-        self.image_list_widget = QListWidget()
-        self.image_list_widget.setViewMode(QListWidget.ViewMode.IconMode)  # Set the view mode to IconMode
-        self.image_list_widget.setIconSize(QSize(100, 100))  # Set the icon size to 100x100 pixels
-        self.image_list_widget.setWordWrap(False)  # Enable word wrap
-        self.image_list_widget.setTextElideMode(Qt.TextElideMode.ElideRight)  # Set text elide mode to elide right
-        self.image_list_widget.setUniformItemSizes(True)  # Enable uniform item sizes
-        self.image_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)  # Set resize mode to Adjust
-        self.image_list_widget.setSpacing(10)  # Set spacing between items
-        
+        self.image_list_widget = ImageListWidget()
         self.image_list_widget.itemDoubleClicked.connect(self.image_double_clicked)
-        self.image_list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.image_list_widget.customContextMenuRequested.connect(self.open_image_menu)
         
         # Add widgets to layout
@@ -157,17 +170,9 @@ class MainWindow(QMainWindow):
         self.thread_pool = QThreadPool()
         self.thread_pool.setMaxThreadCount(8)
         self.image_loader_thread = ImageLoaderThread(folder_path, self.thread_pool)
-        self.image_loader_thread.image_loaded.connect(self.add_thumbnail)
+        self.image_loader_thread.image_loaded.connect(self.image_list_widget.add_thumbnail)
         self.image_loader_thread.run()
 
-    def add_thumbnail(self, icon, image_path):
-        image_file = os.path.basename(image_path)
-        item = QListWidgetItem(icon, image_file)
-        item.setToolTip(image_path)  # Set tooltip to display full file name
-        item.setSizeHint(QSize(100, 120))  # Set a fixed size for the items
-        item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)  # Center align text
-        self.image_list_widget.addItem(item)
-    
     def image_double_clicked(self, item):
         image_path = item.toolTip()
         self.image_viewer.show()
