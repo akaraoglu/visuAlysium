@@ -75,6 +75,10 @@ class ImageEditingsWindow(QWidget):
         hdtsoi_button.pressed.connect(self.hdtsoi_pressed)
         hdtsoi_button.released.connect(self.hdtsoi_released)
 
+        reset_button = QPushButton("Reset")
+        reset_button.setFixedSize(100, 30)
+        reset_button.pressed.connect(self.reset_pressed)
+        
         ok_button = QPushButton("OK")
         ok_button.setFixedSize(100, 30)
         ok_button.clicked.connect(self.ok_pressed)
@@ -84,6 +88,7 @@ class ImageEditingsWindow(QWidget):
         cancel_button.clicked.connect(self.cancel_pressed)
         
         confirmation_layout.addWidget(hdtsoi_button)
+        confirmation_layout.addWidget(reset_button)
         confirmation_layout.addItem(spacer)
         confirmation_layout.addWidget(ok_button)
         confirmation_layout.addWidget(cancel_button)
@@ -149,3 +154,6 @@ class ImageEditingsWindow(QWidget):
     def read_values_from_sliders(self):
         # self.slider_layer.print_values()
         self.slider_value  = self.slider_layer.sliders["Slider1"].value()  /50.0
+
+    def reset_pressed(self):
+        self.slider_layer.reset_sliders()

@@ -1,17 +1,16 @@
 import os
 import sys
-from PyQt6.QtCore import pyqtSlot
-from PyQt6.QtCore import Qt, QDir, QStandardPaths, QSize, QThread, pyqtSignal, QRunnable, QThreadPool, QObject
+from PyQt6.QtCore import Qt, QDir, QStandardPaths, QSize, QThreadPool, QRunnable, QObject, pyqtSignal, pyqtSlot, QThread
+from PyQt6.QtGui import QPixmap, QIcon, QAction, QPalette, QColor, QFileSystemModel
 from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QListWidget, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
-from PyQt6.QtGui import QPixmap, QIcon, QFileSystemModel, QAction
-import time
 from ImageEditorWindow import ImageViewerWindow
 
-
+# Worker signals class for communicating between threads
 class WorkerSignals(QObject):
     finished = pyqtSignal()
     result = pyqtSignal(object, object)
 
+# Worker class that encapsulates a task to be run in a separate thread
 class Worker(QRunnable):
     def __init__(self, function, *args, **kwargs):
         super().__init__()
@@ -22,43 +21,48 @@ class Worker(QRunnable):
 
     @pyqtSlot()
     def run(self):
-        result1, result2   = self.function(*self.args, **self.kwargs)
-        self.signals.result.emit(result1, result2 )
-        self.signals.finished.emit()
+        try:
+            # Try executing the function with the provided arguments
+            result1, result2 = self.function(*self.args, **self.kwargs)
+            self.signals.result.emit(result1, result2)
+        except Exception as e:
+            # Emit the results as None if an error occurs
+            self.signals.result.emit(None, None)
+        finally:
+            # Always emit finished signal
+            self.signals.finished.emit()
 
+# Function to load thumbnail for images
 def load_thumbnail(image_path):
-    pixmap = QPixmap(image_path).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-    icon = QIcon(pixmap)
-    return icon, image_path
+    try:
+        pixmap = QPixmap(image_path).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        icon = QIcon(pixmap)
+        return icon, image_path
+    except Exception as e:
+        return None, image_path
 
+# Thread class to load images from a directory
 class ImageLoaderThread(QThread):
     image_loaded = pyqtSignal(QIcon, str)
 
-    def __init__(self, folder_path):
+    def __init__(self, folder_path, thread_pool):
         super().__init__()
         self.folder_path = folder_path
+        self.thread_pool = thread_pool
 
     @pyqtSlot()
     def run(self):
         image_files = [file for file in os.listdir(self.folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
-        
-        thread_pool = QThreadPool()
-        thread_pool.setMaxThreadCount(8)
         for image_file in image_files:
             image_path = os.path.join(self.folder_path, image_file)
             runnable = Worker(load_thumbnail, image_path)
             runnable.signals.result.connect(self.image_loaded.emit)
-            thread_pool.start(runnable)
-    
-    def begin(self): 
-        self.start()
-        
+            self.thread_pool.start(runnable)
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-
         self.setWindowTitle("VisuAlysium - Image Editor")
-
         self.initUI()
 
     def initUI(self):
@@ -107,17 +111,16 @@ class MainWindow(QMainWindow):
         self.image_list_widget = QListWidget()
         self.image_list_widget.setViewMode(QListWidget.ViewMode.IconMode)  # Set the view mode to IconMode
         self.image_list_widget.setIconSize(QSize(100, 100))  # Set the icon size to 100x100 pixels
-        self.image_list_widget.setWordWrap(True)  # Enable word wrap
+        self.image_list_widget.setWordWrap(False)  # Enable word wrap
         self.image_list_widget.setTextElideMode(Qt.TextElideMode.ElideRight)  # Set text elide mode to elide right
         self.image_list_widget.setUniformItemSizes(True)  # Enable uniform item sizes
         self.image_list_widget.setResizeMode(QListWidget.ResizeMode.Adjust)  # Set resize mode to Adjust
         self.image_list_widget.setSpacing(10)  # Set spacing between items
-
-    
+        
         self.image_list_widget.itemDoubleClicked.connect(self.image_double_clicked)
         self.image_list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.image_list_widget.customContextMenuRequested.connect(self.open_image_menu)
-
+        
         # Add widgets to layout
         splitter = QSplitter()
         splitter.addWidget(self.folder_tree_view)
@@ -151,7 +154,9 @@ class MainWindow(QMainWindow):
 
     def load_images(self, folder_path):
         self.image_list_widget.clear()
-        self.image_loader_thread = ImageLoaderThread(folder_path)
+        self.thread_pool = QThreadPool()
+        self.thread_pool.setMaxThreadCount(8)
+        self.image_loader_thread = ImageLoaderThread(folder_path, self.thread_pool)
         self.image_loader_thread.image_loaded.connect(self.add_thumbnail)
         self.image_loader_thread.run()
 
@@ -180,13 +185,11 @@ class MainWindow(QMainWindow):
             self.image_viewer.show()
             self.image_viewer.show_new_image(image_path)
 
-
     def about(self):
         # Create a QMessageBox
         msg_box = QMessageBox()
         msg_box.setWindowTitle("About")
         msg_box.setIcon(QMessageBox.Icon.Information)
-
 
         # Set text and customize appearance
         msg_box.setText(
