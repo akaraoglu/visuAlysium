@@ -78,6 +78,10 @@ class ImageEditingsWindow(QWidget):
         reset_button = QPushButton("Reset")
         reset_button.setFixedSize(100, 30)
         reset_button.pressed.connect(self.reset_pressed)
+
+        hist_button = QPushButton("Histogram")
+        hist_button.setFixedSize(100, 30)
+        hist_button.pressed.connect(self.histogram_pressed)
         
         ok_button = QPushButton("OK")
         ok_button.setFixedSize(100, 30)
@@ -89,6 +93,7 @@ class ImageEditingsWindow(QWidget):
         
         confirmation_layout.addWidget(hdtsoi_button)
         confirmation_layout.addWidget(reset_button)
+        confirmation_layout.addWidget(hist_button)
         confirmation_layout.addItem(spacer)
         confirmation_layout.addWidget(ok_button)
         confirmation_layout.addWidget(cancel_button)
@@ -157,3 +162,6 @@ class ImageEditingsWindow(QWidget):
 
     def reset_pressed(self):
         self.slider_layer.reset_sliders()
+
+    def histogram_pressed(self):
+        self.image_viewer.toggle_info_display()

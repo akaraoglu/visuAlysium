@@ -103,6 +103,8 @@ class CropWindow(QWidget):
 
         # Assuming ImageViewer and CropWindow_ButtonLayout are defined elsewhere
         self.image_viewer = ImageViewer()
+        self.image_viewer.info_widget.setVisible(False)
+        
         self.pixmap_image_orig = None
         self.button_layer = CropWindow_ButtonLayout()
 

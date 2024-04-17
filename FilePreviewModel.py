@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QTreeView, Q
 from ImageEditorWindow import ImageViewerWindow
 
 
-class clsFilePreviewModel(QFileSystemModel):
+class FileSystemModelImagesOnly(QFileSystemModel):
     def __init__(self, cacheWidth=100, cacheHeight=100):
         super().__init__()
         self.previews = {'None': None}
@@ -59,7 +59,7 @@ class FolderExplorer(QWidget):
         self.gridSize = QSize(140, 140)  # Initial grid size
 
         self.path = dir_path
-        self.files = clsFilePreviewModel()
+        self.files = FileSystemModelImagesOnly()
         self.files.setRootPath(self.path)
 
         self.view = QListView()
