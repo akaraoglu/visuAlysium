@@ -31,14 +31,15 @@ class ImageEditor_ButtonLayout(QWidget):
         self.setLayout(layout)
 
         # Create and add buttons for each action
+        self.add_button("icons/histogram.png", "Histogram", self.button_histogram_clicked)
         self.add_button("icons/crop.png", "Adjust Cropping", self.button_crop_clicked)
         self.add_button("icons/brightness.png", "Adjust Lighting", self.button_brightness_clicked)
         self.add_button("icons/colors.png", "Adjust Colors", self.button_colors_clicked)
         self.add_button("icons/edit-image.png", "Adjust Levels", self.button_edit_image_clicked)
-        self.add_button("icons/button_effects.png", "Sharpness", self.button_effects_clicked)
+        self.add_button("icons/edit-image-2.png", "Sharpness", self.button_effects_clicked)
         # Assuming the "De-Noise" button should have a unique action, use `button_de_noise_clicked` signal
-        self.add_button("icons/button_effects.png", "De-Noise", self.button_de_noise_clicked)
-        self.add_button("icons/histogram.png", "Histogram", self.button_histogram_clicked)
+        self.add_button("icons/edit-image-2.png", "De-Noise", self.button_de_noise_clicked)
+        
         
 
     def add_button(self, icon, tooltip, signal):
@@ -160,7 +161,7 @@ class ImageViewerWindow(QWidget):
         self.buttons_layer.button_crop_clicked.connect(self.crop_button_clicked)
         self.buttons_layer.button_brightness_clicked.connect(self.brightness_button_clicked)
         self.buttons_layer.button_colors_clicked.connect(self.colors_button_clicked)
-        
+        self.buttons_layer.button_histogram_clicked.connect(self.image_viewer.toggle_info_display)
         self.history_widget.show_image_requested.connect(self.show_image_from_history)
         self.history_widget.delete_image_requested.connect(self.delete_image_from_history)
         

@@ -37,6 +37,8 @@ import cv2
 import numpy as np
 from PyQt6.QtGui import QImage
 from numpy.lib.stride_tricks import as_strided
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 
 
@@ -433,3 +435,20 @@ def adjust_saturation_hue(image, saturation_amount, hue_shift):
 
     # Convert back to RGB
     return cv2.cvtColor(image_HSV, cv2.COLOR_HSV2RGB)
+
+
+def calculate_histogram(image, channel):
+    if channel == 'Luminance':
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        hist = cv2.calcHist([gray_image], [0], None, [256], [0, 256])
+    else:
+        channel_map = {'R': 2, 'G': 1, 'B': 0}
+        hist = cv2.calcHist([image], [channel_map[channel]], None, [256], [0, 256])
+    return hist
+
+def plot_to_qimage(fig):
+    canvas = FigureCanvas(fig)
+    canvas.draw()
+    buf, (width, height) = canvas.print_to_buffer()
+    qimage = QImage(buf, width, height, QImage.Format.Format_RGBA8888)
+    return qimage

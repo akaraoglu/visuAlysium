@@ -1,85 +1,10 @@
 import os
 import sys
 from PyQt6.QtCore import Qt, QDir, QStandardPaths, QSize, QThreadPool, QRunnable, QObject, pyqtSignal, pyqtSlot, QThread
-from PyQt6.QtGui import QPixmap, QIcon, QAction, QPalette, QColor, QFileSystemModel
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QListWidget, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
+from PyQt6.QtGui import QPixmap, QIcon, QAction, QPalette, QColor, QFileSystemModel, QStandardItem, QStandardItemModel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QListWidget, QListView, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
 from ImageEditorWindow import ImageViewerWindow
-
-
-class ImageListWidget(QListWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.setViewMode(QListWidget.ViewMode.IconMode)  # Set the view mode to IconMode
-        self.setIconSize(QSize(100, 100))  # Set the icon size to 100x100 pixels
-        self.setWordWrap(False)  # Enable word wrap
-        self.setTextElideMode(Qt.TextElideMode.ElideRight)  # Set text elide mode to elide right
-        self.setUniformItemSizes(True)  # Enable uniform item sizes
-        self.setResizeMode(QListWidget.ResizeMode.Adjust)  # Set resize mode to Adjust
-        self.setSpacing(10)  # Set spacing between items
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-   
-    def add_thumbnail(self, icon, image_path):
-        image_file = os.path.basename(image_path)
-        item = QListWidgetItem(icon, image_file)
-        item.setToolTip(image_path)  # Set tooltip to display full file name
-        item.setSizeHint(QSize(100, 120))  # Set a fixed size for the items
-        item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)  # Center align text
-        self.addItem(item)
-    
-# Worker signals class for communicating between threads
-class WorkerSignals(QObject):
-    finished = pyqtSignal()
-    result = pyqtSignal(object, object)
-
-# Worker class that encapsulates a task to be run in a separate thread
-class Worker(QRunnable):
-    def __init__(self, function, *args, **kwargs):
-        super().__init__()
-        self.function = function
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-
-    @pyqtSlot()
-    def run(self):
-        try:
-            # Try executing the function with the provided arguments
-            result1, result2 = self.function(*self.args, **self.kwargs)
-            self.signals.result.emit(result1, result2)
-        except Exception as e:
-            # Emit the results as None if an error occurs
-            self.signals.result.emit(None, None)
-        finally:
-            # Always emit finished signal
-            self.signals.finished.emit()
-
-# Function to load thumbnail for images
-def load_thumbnail(image_path):
-    try:
-        pixmap = QPixmap(image_path).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        icon = QIcon(pixmap)
-        return icon, image_path
-    except Exception as e:
-        return None, image_path
-
-# Thread class to load images from a directory
-class ImageLoaderThread(QThread):
-    image_loaded = pyqtSignal(QIcon, str)
-
-    def __init__(self, folder_path, thread_pool):
-        super().__init__()
-        self.folder_path = folder_path
-        self.thread_pool = thread_pool
-
-    @pyqtSlot()
-    def run(self):
-        image_files = [file for file in os.listdir(self.folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
-        for image_file in image_files:
-            image_path = os.path.join(self.folder_path, image_file)
-            runnable = Worker(load_thumbnail, image_path)
-            runnable.signals.result.connect(self.image_loaded.emit)
-            self.thread_pool.start(runnable)
+from FilePreviewModel import FolderExplorer
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -125,15 +50,20 @@ class MainWindow(QMainWindow):
         self.folder_tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.folder_tree_view.customContextMenuRequested.connect(self.open_menu)
         self.folder_tree_view.setRootIndex(self.folder_model.index(''))  # Set the root index to root directory
-        
-        desktop_path = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.DownloadLocation)[0]
-        desktop_index = self.folder_model.index(desktop_path)
-        self.folder_tree_view.setCurrentIndex(desktop_index)
+        self.folder_tree_view.clicked.connect(self.folder_selected)
 
-        self.image_list_widget = ImageListWidget()
-        self.image_list_widget.itemDoubleClicked.connect(self.image_double_clicked)
-        self.image_list_widget.customContextMenuRequested.connect(self.open_image_menu)
+        default_path = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.HomeLocation)[0]
+        default_index = self.folder_model.index(default_path)
+        self.folder_tree_view.setCurrentIndex(default_index)
+
+        # self.image_list_widget = ImageListWidget()
+        # self.image_list_widget.doubleClicked.connect(self.image_double_clicked)
+        # self.image_list_widget.customContextMenuRequested.connect(self.image_double_clicked)
         
+        self.image_list_widget = FolderExplorer(default_path)
+        self.image_list_widget.show_image.connect(self.open_image_viewer)
+        self.image_list_widget.path_updated.connect(self.set_folder_tree_view_path)
+
         # Add widgets to layout
         splitter = QSplitter()
         splitter.addWidget(self.folder_tree_view)
@@ -146,7 +76,11 @@ class MainWindow(QMainWindow):
 
         self.layout.addWidget(splitter)
         self.folder_tree_view.setColumnWidth(0, 250)  # Set the width of the "Name" column
-
+    
+    def set_folder_tree_view_path(self, new_path):
+        default_index = self.folder_model.index(new_path)
+        self.folder_tree_view.setCurrentIndex(default_index)
+    
     def open_image_menu(self, position):
         menu = QMenu()
         open_image_action = QAction("Show Image", self)
@@ -166,15 +100,20 @@ class MainWindow(QMainWindow):
         self.load_images(folder_path)
 
     def load_images(self, folder_path):
-        self.image_list_widget.clear()
-        self.thread_pool = QThreadPool()
-        self.thread_pool.setMaxThreadCount(8)
-        self.image_loader_thread = ImageLoaderThread(folder_path, self.thread_pool)
-        self.image_loader_thread.image_loaded.connect(self.image_list_widget.add_thumbnail)
-        self.image_loader_thread.run()
+        self.image_list_widget.update_root_path(folder_path)
+        # image_files = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+        # for image_file in image_files:
+        #     image_path = os.path.join(folder_path, image_file)
+        #     pixmap = QPixmap(image_path).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        #     icon = QIcon(pixmap)
+        #     self.image_list_widget.add_thumbnail(icon, image_path)
 
     def image_double_clicked(self, item):
         image_path = item.toolTip()
+        self.image_viewer.show()
+        self.image_viewer.show_new_image(image_path)
+
+    def open_image_viewer(self, image_path):
         self.image_viewer.show()
         self.image_viewer.show_new_image(image_path)
 
@@ -187,8 +126,7 @@ class MainWindow(QMainWindow):
         file_dialog = QFileDialog()
         image_path, _ = file_dialog.getOpenFileName(self, "Open Image", QDir.homePath(), "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
         if image_path:
-            self.image_viewer.show()
-            self.image_viewer.show_new_image(image_path)
+            self.open_image_viewer(image_path)
 
     def about(self):
         # Create a QMessageBox
