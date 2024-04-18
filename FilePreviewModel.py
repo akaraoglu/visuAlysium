@@ -5,8 +5,9 @@ from PyQt6.QtCore import Qt, QModelIndex, QDir, QStandardPaths, QSize, QThreadPo
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QAction, QPalette, QColor, QFileSystemModel, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QTreeView, QVBoxLayout, QLineEdit, QHBoxLayout, QWidget, QListWidget, QListView, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
 from ImageEditorWindow import ImageViewerWindow
-
-
+import numpy as np
+supported_extensions = ['*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.dng']
+supported_extensions_list = [ext.replace('*.', '') for ext in supported_extensions]
 class FileSystemModelImagesOnly(QFileSystemModel):
     def __init__(self, cacheWidth=100, cacheHeight=100):
         super().__init__()
@@ -16,7 +17,7 @@ class FileSystemModelImagesOnly(QFileSystemModel):
         self.ncols = 2
         
         # Specify the types of files to show
-        self.setNameFilters(['*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp'])
+        self.setNameFilters(supported_extensions)
         self.setNameFilterDisables(False)  # Hide files that are not images
 
         # Include only directories and the specified files
@@ -46,6 +47,9 @@ class FileSystemModelImagesOnly(QFileSystemModel):
     def data(self, index, role):
         if role == Qt.ItemDataRole.DecorationRole:
             return self.getPreview(index)
+        elif role == Qt.ItemDataRole.ToolTipRole:
+            # Return the filename as tooltip
+            return self.filePath(index)
         else:
             return super().data(index, role)
 
@@ -162,7 +166,8 @@ class FolderExplorer(QWidget):
         if os.path.isdir(file_path):
             # If it's a directory, update the view to show the contents of this directory
             self.update_root_path(file_path)
-        elif file_path.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')):  # Check if it's an image
+
+        elif file_path.endswith(tuple(supported_extensions_list)):  # Check if it's an image
             # Optionally do something specific for image files, like opening in an image viewer
             self.open_image_viewer(file_path)
 

@@ -13,7 +13,7 @@ from PyQt6.QtGui import QPixmap, QCursor, QAction, QPen, QImage, QPainterPath, Q
 
 from WidgetUtils import HoverButton
 import ImageProcessingAlgorithms
-
+import rawpy
 
 class CustomInfoPanel(QWidget):
     def __init__(self, parent=None):
@@ -395,15 +395,46 @@ class ImageViewer(QGraphicsView):
 
         # self.reset_rect()
 
-    def open_new_image(self, imagePath):
-        self.image_path = imagePath
-        pixmap = QPixmap(imagePath)
+    def open_new_image(self, image_path):
+        self.image_path = image_path
+        pixmap = self.load_image_to_pixmap(image_path)
         self.original_pixmap = pixmap
         self.previous_pixmap = pixmap
         self.current_pixmap = pixmap
         self.show_pixmap(pixmap)
         self.show_image_initial_size()
         # self.reset_rect()
+    
+    def load_image_to_pixmap(self, image_path):
+        # Check if the file is a RAW file by its extension
+        if image_path.lower().endswith(('.raw', '.cr2', '.nef', '.arw', '.dng')):
+            try:
+                # Handle RAW files
+                with rawpy.imread(image_path) as raw:
+                    # Postprocess and get the image data as a numpy array
+                    rgb_image = raw.postprocess()
+                # Convert the image to a format that QImage can handle
+                height, width, colors = rgb_image.shape
+                bytes_per_line = 3 * width
+                image = QImage(rgb_image.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+            except Exception as e:
+                print(f"Failed to load RAW image: {e}")
+                return None
+        else:
+            try:
+                # Handle standard image formats
+                image = QImage(image_path)
+            except Exception as e:
+                print(f"Failed to load image: {e}")
+                return None
+
+        if image.isNull():
+            print("Unable to load image.")
+            return None
+
+        # Convert QImage to QPixmap for display
+        pixmap = QPixmap.fromImage(image)
+        return pixmap
 
     def setImage(self, image):
         if type(image) is QPixmap:
