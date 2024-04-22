@@ -4,7 +4,7 @@ import numpy as np
 
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QRect
 from PyQt6.QtGui import QPainter, QPen, QColor, QLinearGradient, QBrush, QPixmap, QImage
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QSizePolicy, QSpacerItem, QGridLayout
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QSizePolicy, QSpacerItem, QGridLayout, QComboBox
 
 from PyQt6.QtGui import QPainter, QPen, QColor, QLinearGradient, QBrush
 
@@ -17,10 +17,10 @@ class CurveWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.number_of_points = 8
-        self.margin = 10  # Adjusted to provide margin
-        self.width = 256  # Width of the drawable area
-        self.height = 256  # Height of the drawable area
+        self.number_of_points = 9
+        self.margin = 0  # Adjusted to provide margin
+        self.width = 255  # Width of the drawable area
+        self.height = 255  # Height of the drawable area
         self.setMinimumSize(self.width + 2 * self.margin, self.height + 2 * self.margin)  # Include margin in the size
         self.points = [QPoint(i * 40 + self.margin, i * 40 + self.margin) for i in range(self.number_of_points)]  # Start with points spaced out
         self.initialize_curve()
@@ -30,6 +30,7 @@ class CurveWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         self.draw_background(painter)
+        self.draw_grid(painter)  # Draw grid on the background
         self.draw_points(painter)
         self.draw_curve(painter)
 
@@ -42,6 +43,24 @@ class CurveWidget(QWidget):
         pen = QPen(QColor(15, 15, 15), 2)
         painter.setPen(pen)
         painter.drawRect(self.margin, self.margin, self.width - 2 * self.margin, self.height - 2 * self.margin)
+    
+    def draw_grid(self, painter):
+        # Draw a 7x7 grid
+        pen = QPen(QColor(75, 75, 75), 1, Qt.PenStyle.DotLine)  # Light grey, dotted lines for the grid
+        painter.setPen(pen)
+        grid_spacing_x = (self.width - 2 * self.margin) / 7  # 7 lines, 6 spaces
+        grid_spacing_y = (self.height - 2 * self.margin) / 7
+
+        # Vertical lines
+        for i in range(1, 7):  # Skip the first line because it overlaps with the border
+            x = np.int32(self.margin + i * grid_spacing_x)
+            painter.drawLine(x, self.margin, x, self.height - self.margin)
+
+        # Horizontal lines
+        for i in range(1, 7):  # Skip the first line for the same reason
+            y = np.int32(self.margin + i * grid_spacing_y)
+            painter.drawLine(self.margin, y, self.width - self.margin, y)
+
 
     def draw_points(self, painter):
         # Draw control points
@@ -66,6 +85,8 @@ class CurveWidget(QWidget):
             prev_point = current_point
 
         self.curve = np.clip(cs(x_new), 0, 255).astype(np.uint8)
+        # print(x_vals)
+        # print(y_vals)
 
     def mousePressEvent(self, event):
         pos = event.position().toPoint()  # Convert to QPoint
@@ -90,13 +111,13 @@ class CurveWidget(QWidget):
 
     def initialize_curve(self):
         # Initialize or reset the curve
-        step = (self.width - 2 * self.margin) // (len(self.points) - 1)
-        self.points = [QPoint(self.margin + i * step, self.margin + (self.height - 2 * self.margin) - i * step) for i in range(len(self.points))]
+        step = (self.width+1) // (len(self.points) - 1)
+        self.points = [QPoint(i * step, (self.height) - i * step) for i in range(len(self.points))]
         
         x_vals, y_vals = zip(*[(p.x(), 255 - p.y()) for p in self.points])  # Prepare curve data
         cs = interp1d(x_vals, y_vals, kind="cubic", bounds_error=False, fill_value="extrapolate")
         x_new = np.arange(0, 256, 1)
-        self.curve = np.clip(cs(x_new), 0, 255).astype(np.uint8)
+        self.curve = np.clip(np.round(cs(x_new)), 0, 255).astype(np.uint8)
         self.update()
 
     def reset_curve(self):
@@ -110,71 +131,83 @@ class CurveAdjustmentWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Image Editing Window")
         # self.setGeometry(100, 100, 800, 600)
+        self.curve_option = "Luminance"
 
         # Assuming ImageViewer and LightingWindow_ButtonLayout are defined elsewhere
         self.image_viewer = ImageViewer()
         self.pixmap_image_orig = None
         self.curve_widget = CurveWidget()
         self.curve_widget.curve_updated = self.update_image
+        
+        # Dropdown menu for curve options
+        self.curve_option_dropdown = QComboBox()
+        self.curve_option_dropdown.addItems(["Luminance", "Red", "Green", "Blue"])
+        self.curve_option_dropdown.currentTextChanged.connect(self.curve_option_selected)
 
-        # Create the main layout for the widget
+        # Horizontal layout for the curve widget and the dropdown
+        curve_layout = QHBoxLayout()
+        spacer_1 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        spacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        curve_layout.addItem(spacer_1)
+        curve_layout.addWidget(self.curve_widget)
+        curve_layout.addWidget(self.curve_option_dropdown)
+        curve_layout.addItem(spacer_2)
+
+        # Main vertical layout
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(self.image_viewer)
-        main_layout.addWidget(self.curve_widget)
+        main_layout.addLayout(curve_layout)
 
         # Layout for confirmation buttons
         confirmation_layout = QHBoxLayout()
-        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        
+        self.setup_buttons(confirmation_layout)
+        main_layout.addLayout(confirmation_layout)
+
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
+
+        # Center and size the window
+        self.center_and_size_window()
+    
+    def setup_buttons(self, layout):
+        # Buttons for various actions
         hdtsoi_button = QPushButton("Hold Down to See Original Image")
-        hdtsoi_button.setFixedSize(300, 30)
         hdtsoi_button.pressed.connect(self.hdtsoi_pressed)
         hdtsoi_button.released.connect(self.hdtsoi_released)
-
+        
         reset_button = QPushButton("Reset")
-        reset_button.setFixedSize(100, 30)
         reset_button.pressed.connect(self.reset_pressed)
-
+        
         hist_button = QPushButton("Histogram")
-        hist_button.setFixedSize(100, 30)
         hist_button.pressed.connect(self.histogram_pressed)
         
         ok_button = QPushButton("OK")
-        ok_button.setFixedSize(100, 30)
         ok_button.clicked.connect(self.ok_pressed)
         
         cancel_button = QPushButton("Cancel")
-        cancel_button.setFixedSize(100, 30)
         cancel_button.clicked.connect(self.cancel_pressed)
         
-        confirmation_layout.addWidget(hdtsoi_button)
-        confirmation_layout.addWidget(reset_button)
-        confirmation_layout.addWidget(hist_button)
-        confirmation_layout.addItem(spacer)
-        confirmation_layout.addWidget(ok_button)
-        confirmation_layout.addWidget(cancel_button)
-        main_layout.addLayout(confirmation_layout)
-  
-        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
-
-        # Adjust window size to half of the screen size
+        # Adding buttons to layout
+        layout.addWidget(hdtsoi_button)
+        layout.addWidget(reset_button)
+        layout.addWidget(hist_button)
+        layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        layout.addWidget(ok_button)
+        layout.addWidget(cancel_button)
+    
+    def center_and_size_window(self):
         screen = QApplication.primaryScreen()
         screen_size = screen.size()
-
-        screenWidth = screen_size.width()
-        screenHeight = screen_size.height()
-
-        # Calculate width and height
-        width = screenWidth // 2
-        height = (2 * screenHeight) // 3
-
-        # Calculate x and y positions to center the window
-        x = (screenWidth - width) // 2
-        y = (screenHeight - height) // 2
-
-        # Set geometry to center the window with desired size
+        width = screen_size.width() // 2
+        height = (2 * screen_size.height()) // 3
+        x = (screen_size.width() - width) // 2
+        y = (screen_size.height() - height) // 2
         self.setGeometry(x, y, width, height)
-    
+
+    def curve_option_selected(self, option):
+        print(f"Selected curve option: {option}")
+        self.curve_option = option
+        # Implement functionality based on selected option
+
     def set_image(self, pixmap_image):
         self.curve_widget.reset_curve()
         self.pixmap_image_orig = pixmap_image
@@ -184,11 +217,11 @@ class CurveAdjustmentWindow(QWidget):
         self.image_viewer.show_new_pixmap(scaled_pixmap)
     
     def hdtsoi_pressed(self):
-        print( "HDtSOI", "Showing original image.")
+        print( "Curve", "Showing original image.")
         self.image_viewer.show_pixmap(self.image_viewer.get_original_pixmap())
 
     def hdtsoi_released(self):
-        print( "HDtSOI", "Showing edited image.")
+        print( "Curve", "Showing edited image.")
         self.image_viewer.show_pixmap(self.image_viewer.get_previous_pixmap())
 
     def ok_pressed(self):
@@ -205,7 +238,7 @@ class CurveAdjustmentWindow(QWidget):
 
     def update_image(self):
         print("Update image")
-        self.image_viewer.apply_lut_to_current_pixmap(lut=self.curve_widget.curve)
+        self.image_viewer.apply_lut_to_current_pixmap(self.curve_widget.curve, self.curve_option)
 
     def reset_pressed(self):
         print("Reset")

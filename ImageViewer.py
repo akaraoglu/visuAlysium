@@ -103,11 +103,12 @@ class CustomInfoPanel(QWidget):
         
 
         # Combo box for selecting the channel
-        channel_combo_box = QComboBox()
-        channel_combo_box.setMinimumSize(100, 10)
+        self.channel_combo_box = QComboBox()
+        self.channel_combo_box.setMinimumSize(100, 10)
 
-        channel_combo_box.addItems(["Luminance"])
-        histogram_controls_layout.addWidget(channel_combo_box)
+        
+        self.channel_combo_box.addItems(["Luminance", "Red", "Green", "Blue"])
+        histogram_controls_layout.addWidget(self.channel_combo_box)
         histogram_controls_layout.addItem(spacer)
 
         layout.addLayout(histogram_controls_layout)
@@ -127,6 +128,7 @@ class ImageViewer(QGraphicsView):
 
     def __init__(self):
         super().__init__()
+
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
         self.zoomX = 1              # zoom factor w.r.t size of qlabel_image
@@ -183,6 +185,9 @@ class ImageViewer(QGraphicsView):
 
         self.init_info_display()
         
+        self.curve_option = "Luminance" #default
+        self.info_widget.channel_combo_box.currentTextChanged.connect(self.channel_option_selected)
+    
     def init_info_display(self):
         if self.info_display_visible == True:
             # self.info_label_proxy.setVisible(True)
@@ -217,6 +222,21 @@ class ImageViewer(QGraphicsView):
         self.contextMenu.addAction(self.copyAction)
         self.contextMenu.addAction(self.pasteAction)
         self.contextMenu.addAction(self.saveAction)
+        
+    def keyPressEvent(self, event):
+        print(f"Image Viewer Key pressed: {event.key()}")
+        super().keyPressEvent(event)
+    
+    def toggle_zoom_mode(self):
+        if self.transform().m11() == 1.0:  # If the current zoom is 100% (original size)
+            self.show_image_fit_to_screen()
+        else:
+            self.show_image_in_original_size()
+
+    def set_zoom(self, factor):
+        self.resetTransform()  # Reset any existing transformations
+        self.scale(factor, factor)  # Apply the new zoom factor
+
 
     def create_new_button(self, icon, connect_to):
         new_button = HoverButton(self, icon=icon, button_size=self.button_size, icon_size=self.icon_size)
@@ -228,6 +248,12 @@ class ImageViewer(QGraphicsView):
         self.scene.addItem(self.new_button_proxy)
         return new_button
     
+    def channel_option_selected(self, option):
+        print(f"Selected curve option: {option}")
+        self.curve_option = option
+        self.update_image_info()
+        # Implement functionality based on selected option
+
     def update_image_info(self):
         if self.info_display_visible == True:
             # Update the display with new information
@@ -256,8 +282,9 @@ class ImageViewer(QGraphicsView):
                     self.info_widget.update_info(info_list)
 
                 # Calculate histogram for luminance
+                option = self.curve_option
                 image = self.convert_pixmap_to_opencv_image(self.get_current_pixmap())
-                hist = ImageProcessingAlgorithms.calculate_histogram(image, 'Luminance')
+                hist = ImageProcessingAlgorithms.calculate_histogram(image, option)
 
                 # Plot histogram
                 fig, ax = plt.subplots(figsize=(4, 2))
@@ -684,11 +711,11 @@ class ImageViewer(QGraphicsView):
         self.current_pixmap = image_pixmap
         self.show_pixmap(self.current_pixmap)
     
-    def apply_lut_to_current_pixmap(self, lut):
+    def apply_lut_to_current_pixmap(self, lut, option):
         print("Apply LUT to current image.")
         if self.original_pixmap is not None:
             image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
-            image_cv = ImageProcessingAlgorithms.apply_lut(image_cv, lut)
+            image_cv = ImageProcessingAlgorithms.apply_lut(image_cv, lut, option)
             image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
             self.current_pixmap = image_pixmap
             self.show_pixmap(self.current_pixmap)

@@ -443,7 +443,7 @@ def calculate_histogram(image, channel):
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         hist = cv2.calcHist([gray_image], [0], None, [256], [0, 256])
     else:
-        channel_map = {'R': 2, 'G': 1, 'B': 0}
+        channel_map = {'Red': 0, 'Green': 1, 'Blue': 2}
         hist = cv2.calcHist([image], [channel_map[channel]], None, [256], [0, 256])
     return hist
 
@@ -517,9 +517,24 @@ def load_image_to_qimage(image_path):
     # pixmap = QPixmap.fromImage(image)
     return image
 
-def apply_lut(image, lut):
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    # Apply the LUT to the V channel
-    hsv_image[:, :, 2] = cv2.LUT(hsv_image[:, :, 2], lut)
-    # Convert back to RGB
-    return cv2.cvtColor(hsv_image, cv2.COLOR_HSV2RGB)
+def apply_lut(image, lut, option):
+    option_list = ["Luminance", "Red", "Green", "Blue"]
+    
+    if option not in option_list:
+        raise ValueError(f"Option must be one of {option_list}")
+
+    if option == "Luminance":
+        # Convert to HSV, apply LUT to the V channel, convert back to RGB
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        hsv_image[:, :, 2] = cv2.LUT(hsv_image[:, :, 2], lut)
+        return cv2.cvtColor(hsv_image, cv2.COLOR_HSV2RGB)
+    else:
+        # Apply the LUT to the respective RGB channel
+        [channel_red, channel_green, channel_blue] = cv2.split(image)
+        if option == "Red":
+            channel_red = cv2.LUT(channel_red, lut)  # Red channel in OpenCV is index 2
+        elif option == "Green":
+            channel_green = cv2.LUT(channel_green, lut)  # Green channel is index 1
+        elif option == "Blue":
+            channel_blue = cv2.LUT(channel_blue, lut)  # Blue channel is index 0
+        return cv2.merge((channel_red, channel_green, channel_blue))

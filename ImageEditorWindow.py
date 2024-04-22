@@ -127,6 +127,7 @@ class ImageViewerWindow(QWidget):
         self.setWindowTitle("Image Viewer Window")
       
         self.image_viewer = ImageViewer()
+        
         self.history_widget = HistoryWidget()  # Create instance of HistoryWidget
         self.buttons_layer = ImageEditor_ButtonLayout()
         
@@ -186,8 +187,11 @@ class ImageViewerWindow(QWidget):
 
         # Set geometry to center the window with desired size
         self.setGeometry(x, y, width, height)
-
-
+    
+    def keyPressEvent(self, event):
+        print(f"Key pressed: {event.key()}")
+        super().keyPressEvent(event)
+        
     def show_image_from_history(self, pixmap):
         self.image_viewer.show_pixmap(pixmap)  # Assuming your ImageViewer widget has a method to set a QPixmap
 
