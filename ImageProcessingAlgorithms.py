@@ -35,6 +35,7 @@ import os
 import sys
 import cv2
 import numpy as np
+import rawpy
 from PyQt6.QtGui import QImage
 from numpy.lib.stride_tricks import as_strided
 import matplotlib.pyplot as plt
@@ -452,3 +453,73 @@ def plot_to_qimage(fig):
     buf, (width, height) = canvas.print_to_buffer()
     qimage = QImage(buf, width, height, QImage.Format.Format_RGBA8888)
     return qimage
+
+
+
+rawpy_params = rawpy.Params(
+    demosaic_algorithm=None, 
+    half_size=False, 
+    four_color_rgb=False, 
+    dcb_iterations=0, 
+    dcb_enhance=False, 
+    fbdd_noise_reduction=rawpy.FBDDNoiseReductionMode.Off, 
+    noise_thr=None, 
+    median_filter_passes=0, 
+    use_camera_wb=False, 
+    use_auto_wb=False, 
+    user_wb=None, 
+    output_color=rawpy.ColorSpace.sRGB, 
+    output_bps=8, 
+    user_flip=None, 
+    user_black=None, 
+    user_sat=None, 
+    no_auto_bright=False, 
+    auto_bright_thr=None, 
+    adjust_maximum_thr=0.75, 
+    bright=1.0, 
+    highlight_mode=rawpy.HighlightMode.Clip, 
+    exp_shift=None, 
+    exp_preserve_highlights=0.0, 
+    no_auto_scale=False, 
+    gamma=None, 
+    chromatic_aberration=None, 
+    bad_pixels_path=None)
+
+
+def load_image_to_qimage(image_path):
+    # Check if the file is a RAW file by its extension
+    if image_path.lower().endswith(('.raw', '.cr2', '.nef', '.arw', '.dng')):
+        try:
+            # Handle RAW files
+            with rawpy.imread(image_path) as raw:
+                # Postprocess and get the image data as a numpy array
+                rgb_image = raw.postprocess(rawpy_params)
+            # Convert the image to a format that QImage can handle
+            height, width, colors = rgb_image.shape
+            bytes_per_line = 3 * width
+            image = QImage(rgb_image.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+        except Exception as e:
+            print(f"Failed to load RAW image: {e}")
+            return None
+    else:
+        try:
+            # Handle standard image formats
+            image = QImage(image_path)
+        except Exception as e:
+            print(f"Failed to load image: {e}")
+            return None
+
+    if image.isNull():
+        print("Unable to load image.")
+        return None
+
+    # # Convert QImage to QPixmap for display
+    # pixmap = QPixmap.fromImage(image)
+    return image
+
+def apply_lut(image, lut):
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    # Apply the LUT to the V channel
+    hsv_image[:, :, 2] = cv2.LUT(hsv_image[:, :, 2], lut)
+    # Convert back to RGB
+    return cv2.cvtColor(hsv_image, cv2.COLOR_HSV2RGB)

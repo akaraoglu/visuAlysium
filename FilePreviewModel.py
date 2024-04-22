@@ -8,6 +8,7 @@ from ImageEditorWindow import ImageViewerWindow
 import numpy as np
 supported_extensions = ['*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.dng']
 supported_extensions_list = [ext.replace('*.', '') for ext in supported_extensions]
+
 class FileSystemModelImagesOnly(QFileSystemModel):
     def __init__(self, cacheWidth=100, cacheHeight=100):
         super().__init__()
@@ -142,10 +143,10 @@ class FolderExplorer(QWidget):
 
     def update_columns(self, num_columns):
         # Adjust the grid size based on the number of columns
-        new_width = self.width() // num_columns
+        new_width = self.gridSize.height() # self.width() // num_columns
         new_grid_size = QSize(new_width, self.gridSize.height())
         self.view.setGridSize(new_grid_size)
-        self.view.setIconSize(QSize(new_width - 10, 100))  # Adjust icon size if necessary
+        self.view.setIconSize(QSize(new_width - 10, 140))  # Adjust icon size if necessary
 
     def update_root_path(self, new_path):
         """Update the view to show files from a new directory."""

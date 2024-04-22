@@ -7,6 +7,7 @@ from CropWindow import CropWindow
 
 from LightingWindow import LightingWindow
 from ColorsWindow import ColorsWindow
+from CurveAdjustementWindow import CurveAdjustmentWindow
 
 class ImageEditor_ButtonLayout(QWidget):
     
@@ -14,7 +15,7 @@ class ImageEditor_ButtonLayout(QWidget):
     button_crop_clicked = pyqtSignal()
     button_brightness_clicked = pyqtSignal()
     button_colors_clicked = pyqtSignal()
-    button_edit_image_clicked = pyqtSignal()
+    button_edit_curve_clicked = pyqtSignal()
     button_effects_clicked = pyqtSignal()
     button_de_noise_clicked = pyqtSignal()
     button_histogram_clicked = pyqtSignal()
@@ -35,7 +36,7 @@ class ImageEditor_ButtonLayout(QWidget):
         self.add_button("icons/crop.png", "Adjust Cropping", self.button_crop_clicked)
         self.add_button("icons/brightness.png", "Adjust Lighting", self.button_brightness_clicked)
         self.add_button("icons/colors.png", "Adjust Colors", self.button_colors_clicked)
-        self.add_button("icons/edit-image.png", "Adjust Levels", self.button_edit_image_clicked)
+        self.add_button("icons/edit-image.png", "Adjust Curve", self.button_edit_curve_clicked)
         self.add_button("icons/edit-image-2.png", "Sharpness", self.button_effects_clicked)
         # Assuming the "De-Noise" button should have a unique action, use `button_de_noise_clicked` signal
         self.add_button("icons/edit-image-2.png", "De-Noise", self.button_de_noise_clicked)
@@ -135,6 +136,8 @@ class ImageViewerWindow(QWidget):
         self.lighting_window.editing_confirmed.connect(self.editing_confirmed)
         self.colors_window = ColorsWindow()
         self.colors_window.editing_confirmed.connect(self.editing_confirmed)
+        self.curve_editing = CurveAdjustmentWindow()
+        self.curve_editing.editing_confirmed.connect(self.editing_confirmed)
 
         main_layout = QGridLayout(self)
         image_layout = QVBoxLayout()
@@ -161,6 +164,7 @@ class ImageViewerWindow(QWidget):
         self.buttons_layer.button_crop_clicked.connect(self.crop_button_clicked)
         self.buttons_layer.button_brightness_clicked.connect(self.brightness_button_clicked)
         self.buttons_layer.button_colors_clicked.connect(self.colors_button_clicked)
+        self.buttons_layer.button_edit_curve_clicked.connect(self.button_edit_curve_clicked)
         self.buttons_layer.button_histogram_clicked.connect(self.image_viewer.toggle_info_display)
         self.history_widget.show_image_requested.connect(self.show_image_from_history)
         self.history_widget.delete_image_requested.connect(self.delete_image_from_history)
@@ -210,6 +214,10 @@ class ImageViewerWindow(QWidget):
     def colors_button_clicked(self):
         self.colors_window.show()
         self.colors_window.set_image(self.image_viewer.get_current_pixmap())
+
+    def button_edit_curve_clicked(self):
+        self.curve_editing.show()
+        self.curve_editing.set_image(self.image_viewer.get_current_pixmap())
 
     def editing_confirmed(self, pixmap, description):
         print("Editing confirmed!")
