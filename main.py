@@ -56,10 +56,6 @@ class MainWindow(QMainWindow):
         default_index = self.folder_model.index(default_path)
         self.folder_tree_view.setCurrentIndex(default_index)
 
-        # self.image_list_widget = ImageListWidget()
-        # self.image_list_widget.doubleClicked.connect(self.image_double_clicked)
-        # self.image_list_widget.customContextMenuRequested.connect(self.image_double_clicked)
-        
         self.image_list_widget = FolderExplorer(default_path)
         self.image_list_widget.show_image.connect(self.open_image_viewer)
         self.image_list_widget.path_updated.connect(self.set_folder_tree_view_path)
@@ -101,12 +97,6 @@ class MainWindow(QMainWindow):
 
     def load_images(self, folder_path):
         self.image_list_widget.update_root_path(folder_path)
-        # image_files = [file for file in os.listdir(folder_path) if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
-        # for image_file in image_files:
-        #     image_path = os.path.join(folder_path, image_file)
-        #     pixmap = QPixmap(image_path).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        #     icon = QIcon(pixmap)
-        #     self.image_list_widget.add_thumbnail(icon, image_path)
 
     def image_double_clicked(self, item):
         image_path = item.toolTip()
@@ -136,7 +126,7 @@ class MainWindow(QMainWindow):
 
         # Set text and customize appearance
         msg_box.setText(
-            "p>This is an experimental Python-based image visualizer and editor.</p>"
+            "<p>This is an experimental Python-based image visualizer and editor.</p>"
             "<p>Copyright (c) 2024 VisuAlysium</p>"
             "<p>This program is free software: you can redistribute it and/or modify it under the terms of the "
             "GNU General Public License as published by the Free Software Foundation, either version 3 of the License, "
@@ -146,12 +136,8 @@ class MainWindow(QMainWindow):
             "Public License for more details.</p>"
             "<p>You should have received a copy of the GNU General Public License along with this program. If not, "
             "see <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.</p>"
-      
         )
 
-        # # Customize appearance
-        # msg_box.setStyleSheet("QLabel{min-width: 600px;}")
-        
         # Set fixed size
         msg_box.setFixedSize(800, 400)
 

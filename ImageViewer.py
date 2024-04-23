@@ -711,11 +711,24 @@ class ImageViewer(QGraphicsView):
         self.current_pixmap = image_pixmap
         self.show_pixmap(self.current_pixmap)
     
-    def apply_lut_to_current_pixmap(self, lut, option):
+    def apply_lut_to_current_pixmap(self, lut_global, lut_shadows, lut_highlight, mask, channel):
         print("Apply LUT to current image.")
+        
+        
+
         if self.original_pixmap is not None:
+            # Generate mask
+            grayscale_image = self.get_original_pixmap().toImage().convertToFormat(QImage.Format.Format_Grayscale8)
+            mask_lowres = grayscale_image.scaled(16, 16)    
+            mask_fulres = mask_lowres.scaled(self.get_original_pixmap().width(), 
+                                                self.get_original_pixmap().height(), 
+                                                Qt.AspectRatioMode.IgnoreAspectRatio, 
+                                                Qt.TransformationMode.SmoothTransformation)
+            
+            mask_fulres_cv = ImageProcessingAlgorithms.convertQImageToArray(mask_fulres)[:,:,0] # decerease the 3 dimension to 2
+            
             image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
-            image_cv = ImageProcessingAlgorithms.apply_lut(image_cv, lut, option)
+            image_cv = ImageProcessingAlgorithms.apply_lut_local(image_cv, lut_shadows, lut_highlight, channel, mask_fulres_cv)
             image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
             self.current_pixmap = image_pixmap
             self.show_pixmap(self.current_pixmap)

@@ -517,7 +517,8 @@ def load_image_to_qimage(image_path):
     # pixmap = QPixmap.fromImage(image)
     return image
 
-def apply_lut(image, lut, option):
+
+def apply_lut_global(image, lut, option):
     option_list = ["Luminance", "Red", "Green", "Blue"]
     
     if option not in option_list:
@@ -538,3 +539,55 @@ def apply_lut(image, lut, option):
         elif option == "Blue":
             channel_blue = cv2.LUT(channel_blue, lut)  # Blue channel is index 0
         return cv2.merge((channel_red, channel_green, channel_blue))
+
+
+
+
+def apply_lut_local(image, lut_1, lut_2, channels, mask):
+    channel_list = ["Luminance", "Red", "Green", "Blue"]
+    
+    if channels not in channel_list:
+        raise ValueError(f"Option must be one of {channel_list}")
+
+    # Ensure mask values are within [0, 1]
+    mask = np.clip(mask/255.0, 0, 1)
+
+    if channels == "Luminance":
+        # Convert to HSV, interpolate LUT for the V channel, convert back to RGB
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        v_channel = hsv_image[:, :, 2]
+        output_channel = np.zeros_like(v_channel, dtype=np.uint8)
+        
+        # Applying LUTs based on the mask
+        for i in range(256):
+            use_lut_1 = lut_1[i] * (1 - mask)
+            use_lut_2 = lut_2[i] * mask
+            output_channel[v_channel == i] = (use_lut_1 + use_lut_2)[v_channel == i]
+        
+        hsv_image[:, :, 2] = output_channel
+        return cv2.cvtColor(hsv_image, cv2.COLOR_HSV2RGB)
+    else:
+        # Apply the LUT to the respective RGB channel
+        output_image = np.zeros_like(image, dtype=np.uint8)
+        [channel_red, channel_green, channel_blue] = cv2.split(image)
+        
+        # Interpolate LUT application for each channel
+        channel_map = {
+            "Red": 0,
+            "Green": 1,
+            "Blue": 2
+        }
+        selected_channel_index = channel_map[channels]
+        selected_channel = [channel_red, channel_green, channel_blue][selected_channel_index]
+        
+        output_channel = np.zeros_like(selected_channel, dtype=np.uint8)
+        
+        for i in range(256):
+            use_lut_1 = lut_1[i] * (1 - mask)
+            use_lut_2 = lut_2[i] * mask
+            output_channel[selected_channel == i] = (use_lut_1 + use_lut_2)[selected_channel == i]
+        
+        output_image[:, :, selected_channel_index] = output_channel
+        return output_image
+
+
