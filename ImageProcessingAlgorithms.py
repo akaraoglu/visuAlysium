@@ -518,13 +518,13 @@ def load_image_to_qimage(image_path):
     return image
 
 
-def apply_lut_global(image, lut, option):
-    option_list = ["Luminance", "Red", "Green", "Blue"]
+def apply_lut_global(image, lut, channel):
+    channel_list = ["Luminance", "Red", "Green", "Blue"]
     
-    if option not in option_list:
-        raise ValueError(f"Option must be one of {option_list}")
+    if channel not in channel_list:
+        raise ValueError(f"Option must be one of {channel_list}")
 
-    if option == "Luminance":
+    if channel == "Luminance":
         # Convert to HSV, apply LUT to the V channel, convert back to RGB
         hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
         hsv_image[:, :, 2] = cv2.LUT(hsv_image[:, :, 2], lut)
@@ -532,11 +532,11 @@ def apply_lut_global(image, lut, option):
     else:
         # Apply the LUT to the respective RGB channel
         [channel_red, channel_green, channel_blue] = cv2.split(image)
-        if option == "Red":
+        if channel == "Red":
             channel_red = cv2.LUT(channel_red, lut)  # Red channel in OpenCV is index 2
-        elif option == "Green":
+        elif channel == "Green":
             channel_green = cv2.LUT(channel_green, lut)  # Green channel is index 1
-        elif option == "Blue":
+        elif channel == "Blue":
             channel_blue = cv2.LUT(channel_blue, lut)  # Blue channel is index 0
         return cv2.merge((channel_red, channel_green, channel_blue))
 
@@ -568,7 +568,7 @@ def apply_lut_local(image, lut_1, lut_2, channels, mask):
         return cv2.cvtColor(hsv_image, cv2.COLOR_HSV2RGB)
     else:
         # Apply the LUT to the respective RGB channel
-        output_image = np.zeros_like(image, dtype=np.uint8)
+        # output_image = np.zeros_like(image, dtype=np.uint8)
         [channel_red, channel_green, channel_blue] = cv2.split(image)
         
         # Interpolate LUT application for each channel
@@ -587,6 +587,7 @@ def apply_lut_local(image, lut_1, lut_2, channels, mask):
             use_lut_2 = lut_2[i] * mask
             output_channel[selected_channel == i] = (use_lut_1 + use_lut_2)[selected_channel == i]
         
+        output_image = cv2.merge((channel_red, channel_green, channel_blue))
         output_image[:, :, selected_channel_index] = output_channel
         return output_image
 

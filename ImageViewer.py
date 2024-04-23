@@ -728,6 +728,8 @@ class ImageViewer(QGraphicsView):
             mask_fulres_cv = ImageProcessingAlgorithms.convertQImageToArray(mask_fulres)[:,:,0] # decerease the 3 dimension to 2
             
             image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
+            image_cv = ImageProcessingAlgorithms.apply_lut_global(image_cv, lut_global, channel)
+            
             image_cv = ImageProcessingAlgorithms.apply_lut_local(image_cv, lut_shadows, lut_highlight, channel, mask_fulres_cv)
             image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
             self.current_pixmap = image_pixmap

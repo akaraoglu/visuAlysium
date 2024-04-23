@@ -17,7 +17,7 @@ class CurveWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.number_of_points = 9
+        self.number_of_points = 7
         self.margin = 0  # Adjusted to provide margin
         self.width = 255  # Width of the drawable area
         self.height = 255  # Height of the drawable area
@@ -122,7 +122,6 @@ class CurveWidget(QWidget):
 
     def reset_curve(self):
         self.initialize_curve()  # Reset curve and update widget
-        self.curve_updated()
 
 class CurveAdjustmentWindow(QWidget):
     editing_confirmed = pyqtSignal(QPixmap, str)
@@ -156,13 +155,13 @@ class CurveAdjustmentWindow(QWidget):
         
         # Adding labels and curve widgets to the grid layout
         curve_layout.addWidget(QLabel("Global Adjustment"), 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter)
-        curve_layout.addWidget(self.curve_widget_global, 1, 0)
+        curve_layout.addWidget(self.curve_widget_global, 1, 0, Qt.AlignmentFlag.AlignCenter)
         
         curve_layout.addWidget(QLabel("Local Shadows"), 0, 1, 1, 1, Qt.AlignmentFlag.AlignCenter)
-        curve_layout.addWidget(self.curve_widget_local_shadow, 1, 1)
+        curve_layout.addWidget(self.curve_widget_local_shadow, 1, 1, Qt.AlignmentFlag.AlignCenter)
         
         curve_layout.addWidget(QLabel("Local Highlights"), 0, 2, 1, 1, Qt.AlignmentFlag.AlignCenter)
-        curve_layout.addWidget(self.curve_widget_local_highlight, 1, 2)
+        curve_layout.addWidget(self.curve_widget_local_highlight, 1, 2, Qt.AlignmentFlag.AlignCenter)
 
         # Main vertical layout
         main_layout = QVBoxLayout(self)
@@ -171,6 +170,7 @@ class CurveAdjustmentWindow(QWidget):
         options_layout = QHBoxLayout()
         options_layout.addWidget(QLabel("Adjustment Type:"))
         options_layout.addWidget(self.curve_channel_dropdown)
+        options_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
 
         confirmation_layout = QHBoxLayout()
         self.setup_buttons(confirmation_layout)
@@ -227,10 +227,10 @@ class CurveAdjustmentWindow(QWidget):
         # Implement functionality based on selected option
 
     def set_image(self, pixmap_image):
-        self.curve_widget_global.reset_curve()
+        self.reset_pressed()
         self.pixmap_image_orig = pixmap_image
-        new_width = 1024
-        new_height = 1024
+        new_width = 800
+        new_height = 800
         scaled_pixmap = pixmap_image.scaled(new_width, new_height, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
         self.image_viewer.show_new_pixmap(scaled_pixmap)
     
@@ -265,6 +265,9 @@ class CurveAdjustmentWindow(QWidget):
     def reset_pressed(self):
         print("Reset")
         self.curve_widget_global.reset_curve()
+        self.curve_widget_local_highlight.reset_curve()
+        self.curve_widget_local_shadow.reset_curve()
+        self.curve_widget_global.curve_updated()
 
     def histogram_pressed(self):
         self.image_viewer.toggle_info_display()
