@@ -1,5 +1,5 @@
 
-# VISUALYSIUM 
+![image](https://github.com/akaraoglu/visuAlysium/assets/32932292/91e226a9-620d-4b3c-8d75-7dbc22703eb5)
 # An experimental image editor
 
 This application is a versatile image visualizer and editor that showcases the robust capabilities of Python combined with PyQt. It provides users with intuitive tools for basic image adjustments, including control over brightness and color settings. The software stands out with its extensive curve editing functionality, which allows advanced tone mapping to enhance details in shadows and highlights.
