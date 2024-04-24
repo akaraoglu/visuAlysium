@@ -106,7 +106,7 @@ class ImageViewerWindowAbstract(QWidget):
         print("Cancel", "Operation has been cancelled.")
         self.close() #to close the window
 
-    # Define placeholder functions for slider adjustments
+    # Define placeholder functions for adjustments
     def update_image(self):
         print("Update image")
 

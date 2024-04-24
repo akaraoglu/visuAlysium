@@ -77,3 +77,7 @@ class ImageEditingsWindow(ImageViewerWindowAbstract):
 
     def reset_pressed(self):
         self.editing_options_layout.reset_sliders()
+    
+    # Define placeholder functions for slider adjustments
+    def update_image(self):
+        self.slider_values_changed(0)

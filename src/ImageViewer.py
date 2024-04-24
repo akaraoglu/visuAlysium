@@ -205,7 +205,7 @@ class ImageViewer(QGraphicsView):
         else:
             self.info_display_visible = False
         self.init_info_display()
-        # self.update_image_info()
+        self.update_image_info()
         
         print("Showing histogram: ", self.info_display_visible)
 
