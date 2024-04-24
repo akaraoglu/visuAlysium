@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QPushButton, QSlider
-from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QPushButton, QSlider, QApplication
+from PyQt6.QtGui import QIcon, QPalette
 from PyQt6.QtCore import QSize
 
 class HoverButton(QPushButton):
@@ -14,8 +14,9 @@ class HoverButton(QPushButton):
         self.setIconSize(self.icon_size)  # Set icon size
         self.setToolTip(text)
         # Set initial stylesheet (optional)
-        self.default_stylesheet = "background-color: rgba(125, 125, 125, 0.3); border: 1px ; border-radius: 10px; color: white;"
-        self.hover_stylesheet = "background-color: rgba(125, 125, 125, 0.7); border: 1px solid black; border-radius: 10px; color: white;"  # Hover stylesheet
+        palette = QApplication.instance().palette()
+        self.default_stylesheet = f"background-color: rgba(125, 125, 125, 0.3); border: 1px ; border-radius: 10px; color: {palette.color(QPalette.ColorRole.Base).name()};"
+        self.hover_stylesheet = f"background-color: rgba(125, 125, 125, 0.7); border: 1px solid black; border-radius: 10px; color: {palette.color(QPalette.ColorRole.Base).name()};"  # Hover stylesheet
         self.setStyleSheet(self.default_stylesheet)  # Adjust styles as needed
 
     def enterEvent(self, event):

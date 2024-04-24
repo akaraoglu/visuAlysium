@@ -4,6 +4,8 @@ from PyQt6.QtGui import QPixmap, QIcon, QAction, QIntValidator
 from ImageViewer import ImageViewer
 from WidgetUtils import HoverButton
 from WindowImageViewerAbstract import ImageViewerWindowAbstract
+from PyQt6.QtWidgets import QPushButton, QSlider, QApplication
+from PyQt6.QtGui import QIcon, QPalette
 
 class CropWindow_ButtonLayout(QHBoxLayout):
     flip_v_clicked = pyqtSignal()
@@ -60,6 +62,10 @@ class CropWindow_ButtonLayout(QHBoxLayout):
         line_edit_width = (digit_width * max_digits) + padding
 
         line_edit = QLineEdit()
+
+        palette = QApplication.instance().palette()
+        line_edit.setStyleSheet(f"color: {palette.color(QPalette.ColorRole.Text).name()};")
+
         line_edit.setFixedWidth(line_edit_width)
         line_edit.setPlaceholderText(placeholder)
         max_value = 99999
@@ -100,6 +106,9 @@ class WindowCropping(ImageViewerWindowAbstract):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Crop Window")
+        # Connect new signal to a method
+        self.editing_options_layout.crop_rectangle_changed.connect(self.update_image_viewer_crop)
+        self.image_viewer.crop_rectangle_changed.connect(self.update_crop_info_in_button_layer)
 
     def create_editing_options_layout(self):
         temp_layout = CropWindow_ButtonLayout()
@@ -111,12 +120,9 @@ class WindowCropping(ImageViewerWindowAbstract):
         temp_layout.rotate_l_clicked.connect(self.rotate_left)
         return temp_layout
     
-    
-    def keyPressEvent(self, event):
-        self.image_viewer.keyPressEvent(event)
-        super().keyPressEvent(event)
-        
     def update_crop_info_in_button_layer(self, crop_rect):
+        print("Crop rect changed!")
+        print(crop_rect)
         # Assuming the crop_rect is a QRectF or similar
         self.editing_options_layout.set_crop_info(crop_rect.x(), crop_rect.y(), crop_rect.width(), crop_rect.height())
 
@@ -126,11 +132,9 @@ class WindowCropping(ImageViewerWindowAbstract):
         self.image_viewer.set_crop_rectangle(x, y, width, height)
 
     def set_image(self, pixmap_image):
-        
         self.pixmap_image_orig = pixmap_image
         self.image_viewer.set_crop_mode(True)
         self.image_viewer.show_new_pixmap(pixmap_image)
-        
         self.image_viewer.reset_rect()
 
     def flip_vertical(self):
@@ -165,6 +169,13 @@ class WindowCropping(ImageViewerWindowAbstract):
 
         self.editing_confirmed.emit(self.image_viewer.get_current_pixmap(), "Crop and Rotate")
         self.close() #to close the window
+    
+    # Define placeholder functions for slider adjustments
+    def update_image(self):
+        print("Update image")
+
+    def reset_pressed(self):
+        print("Reset placeholder.")
 
     def cancel_pressed(self):
         # Here you would typically revert any changes or simply close the window without applying changes

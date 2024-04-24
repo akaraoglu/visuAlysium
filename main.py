@@ -34,8 +34,8 @@ __date__ = "2024-04-10"
 
 import os
 import sys
-from PyQt6.QtCore import Qt, QDir, QStandardPaths
-from PyQt6.QtGui import QIcon, QAction, QPalette, QColor, QFileSystemModel
+from PyQt6.QtCore import Qt, QDir, QStandardPaths, QUrl
+from PyQt6.QtGui import QIcon, QAction, QPalette, QColor, QFileSystemModel, QDesktopServices
 from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
 from ImageEditorWindow import ImageViewerWindow
 from FolderExplorer import FolderExplorer
@@ -47,66 +47,214 @@ class MainWindow(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        # Create a menu bar
-        menu_bar = QMenuBar(self)
-        self.setMenuBar(menu_bar)
-
-        # Create a "File" menu and add it to the menu bar
-        file_menu = QMenu("&File", self)
-        menu_bar.addMenu(file_menu)
-
+        self.setup_menus()  # Set up the menus
+                
         self.image_viewer_window = ImageViewerWindow()
-
-        # Create actions for the "File" menu
-        open_folder_action = QAction("Open Folder", self)
-        open_image_action = QAction("Open Image", self)
-        about_action = QAction("About", self)
-
-        # Add actions to the "File" menu
-        file_menu.addAction(open_folder_action)
-        file_menu.addAction(open_image_action)
-        file_menu.addAction(about_action)
-
-        # Connect actions to methods
-        open_folder_action.triggered.connect(self.open_folder)
-        open_image_action.triggered.connect(self.open_image)
-        about_action.triggered.connect(self.about)
-
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.layout = QHBoxLayout(self.central_widget)
+        
+        self.default_path = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.HomeLocation)[0]
 
-        # Left panel: Folder tree view
-        self.folder_model = QFileSystemModel()
-        self.folder_model.setRootPath(QDir.rootPath())
-        self.folder_tree_view = QTreeView()
-        self.folder_tree_view.setModel(self.folder_model)
-        self.folder_tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.folder_tree_view.customContextMenuRequested.connect(self.open_menu)
-        self.folder_tree_view.setRootIndex(self.folder_model.index(''))  # Set the root index to root directory
-        self.folder_tree_view.clicked.connect(self.folder_selected)
-
-        default_path = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.HomeLocation)[0]
-        default_index = self.folder_model.index(default_path)
-        self.folder_tree_view.setCurrentIndex(default_index)
-
-        self.image_list_widget = FolderExplorer(default_path)
+        self.image_list_widget = FolderExplorer(self.default_path)
         self.image_list_widget.show_image.connect(self.open_image_viewer)
         self.image_list_widget.path_updated.connect(self.set_folder_tree_view_path)
 
         # Add widgets to layout
+        self.folder_tree_view = QTreeView()
+
         splitter = QSplitter()
         splitter.addWidget(self.folder_tree_view)
         splitter.addWidget(self.image_list_widget)
         splitter.setStretchFactor(0, 0)  # Prevent the folder view from stretching
         splitter.setStretchFactor(1, 1)  # Allow the image view to stretch
-
-        # Set default sizes for the left and right panels
         splitter.setSizes([400, 600])
-
         self.layout.addWidget(splitter)
+
+        # Setting the width of the columns do not work if it is set before the splitters added.
+        # Uknown issue. 
+        self.setup_folder_tree_view()
+
+            
+    def setup_menus(self):
+        # Create a menu bar
+        menu_bar = QMenuBar(self)
+        self.setMenuBar(menu_bar)
+
+        # Create a "File" menu
+        file_menu = QMenu("&File", self)
+        open_folder_action = QAction("Open Folder", self)
+        open_image_action = QAction("Open Image", self)
+        file_menu.addAction(open_folder_action)
+        file_menu.addAction(open_image_action)
+        open_folder_action.triggered.connect(self.open_folder)
+        open_image_action.triggered.connect(self.open_image)
+
+        # Create a "Help" menu
+        help_menu = QMenu("&Help", self)
+        
+        help_action = QAction("Help", self)
+        license_action = QAction("License Agreement", self)
+        homepage_action = QAction("Home Page", self)
+        about_action = QAction("About", self)
+        
+        help_menu.addAction(help_action)
+        help_menu.addAction(license_action)
+        help_menu.addAction(homepage_action)
+        help_menu.addAction(about_action)
+        
+        help_action.triggered.connect(self.show_help)
+        license_action.triggered.connect(self.show_license)
+        homepage_action.triggered.connect(self.show_homepage)
+        about_action.triggered.connect(self.about)
+        
+        # Create a "Settings" menu with a "Themes" submenu
+        settings_menu = QMenu("&Settings", self)
+        
+        themes_menu = QMenu("Themes", self)
+        settings_menu.addMenu(themes_menu)
+
+        dark_theme_action = QAction("Dark", self)
+        gray_theme_action = QAction("Gray", self)
+        light_theme_action = QAction("Light", self)
+
+        themes_menu.addAction(dark_theme_action)
+        themes_menu.addAction(gray_theme_action)
+        themes_menu.addAction(light_theme_action)
+        
+        dark_theme_action.triggered.connect(lambda: self.set_theme("dark"))
+        gray_theme_action.triggered.connect(lambda: self.set_theme("gray"))
+        light_theme_action.triggered.connect(lambda: self.set_theme("light"))
+        
+        self.set_theme("dark")
+
+        # Add tje file menus in order.
+        menu_bar.addMenu(file_menu)
+        menu_bar.addMenu(help_menu)
+        menu_bar.addMenu(settings_menu)
+        
+
+    def set_theme(self, theme_name):
+        palette = QPalette()
+        if theme_name == "dark":
+            palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+            palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+            palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+            palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+            palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+        elif theme_name == "gray":
+            palette.setColor(QPalette.ColorRole.Window, QColor(189, 189, 189))
+            palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
+            palette.setColor(QPalette.ColorRole.Base, QColor(125, 125, 125))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(150, 150, 150))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+            palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+            palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+            palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+
+        elif theme_name == "light":
+            palette.setColor(QPalette.ColorRole.Window, QColor(255, 255, 255))
+            palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.black)
+            palette.setColor(QPalette.ColorRole.Base, QColor(240, 240, 240))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(255, 255, 255))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+            palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
+            palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.black)
+            palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
+            palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.black)
+            palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+            palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+            palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+        
+        QApplication.instance().setPalette(palette)
+        
+        if hasattr(self, 'image_list_widget'):
+            self.image_list_widget.update_colors()  # Assuming you've added this method to FolderExplorer
+        self.update()  # Ensure the main window and all its children are repainted
+
+
+    def show_help(self):
+        QMessageBox.information(self, "Help", "This section will provide help and FAQs related to the application.")
+
+
+    def show_license(self):
+        # Create a QMessageBox
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle("License Agreement")
+        msg_box.setIcon(QMessageBox.Icon.Information)
+
+        # Set text and customize appearance
+        msg_box.setText(
+            "<p>Copyright (c) 2024 VisuAlysium</p>"
+            "<p>This program is free software: you can redistribute it and/or modify it under the terms of the "
+            "GNU General Public License as published by the Free Software Foundation, either version 3 of the License, "
+            "or (at your option) any later version.</p>"
+            "<p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without "
+            "even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General "
+            "Public License for more details.</p>"
+            "<p>You should have received a copy of the GNU General Public License along with this program. If not, "
+            "see <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.</p>"
+        )
+
+        # Set fixed size
+        msg_box.setFixedSize(800, 400)
+
+        # Display the message box
+        msg_box.exec()
+
+    def show_homepage(self):
+        QDesktopServices.openUrl(QUrl("https://github.com/akaraoglu/visuAlysium"))  # Replace with your actual URL
+
+    def about(self):
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle("About")
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setText(
+            "<h2>VisuAlysium - Image Editor</h2>"
+            "<p>This application is an <strong>experimental image visualizer and editor</strong> designed to demonstrate "
+            "the capabilities of Python with PyQt. It serves as a foundation that can be expanded or customized for various "
+            "purposes, including educational tools, professional image editing, or as a base for more specialized graphical "
+            "applications.</p>"
+            "<p>As an open-source project, it encourages community involvement and contributions to evolve its features "
+            "and capabilities. Users and developers are invited to adapt the software to their specific needs or to contribute "
+            "to its development.</p>"
+        )
+        msg_box.setDetailedText(
+            "Copyright (c) 2024 VisuAlysium\n"
+            "This program is distributed under the terms of the GNU General Public License (GPL), which permits "
+            "redistribution and modification under certain conditions. This promotes software freedom and collaboration, "
+            "making it a valuable tool for community-driven development."
+        )
+        msg_box.setFixedSize(500, 300)
+        msg_box.exec()
+
+    def setup_folder_tree_view(self):
+        # Left panel: Folder tree view
+        self.folder_model = QFileSystemModel()
+        self.folder_model.setRootPath(QDir.rootPath())
+        self.folder_tree_view.setModel(self.folder_model)
+        self.folder_tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.folder_tree_view.customContextMenuRequested.connect(self.open_menu)
+        self.folder_tree_view.setRootIndex(self.folder_model.index(''))  # Set the root index to root directory
+        self.folder_tree_view.clicked.connect(self.folder_selected)
+        default_index = self.folder_model.index(self.default_path)
+        self.folder_tree_view.setCurrentIndex(default_index)
         self.folder_tree_view.setColumnWidth(0, 250)  # Set the width of the "Name" column
-    
+
     def set_folder_tree_view_path(self, new_path):
         default_index = self.folder_model.index(new_path)
         self.folder_tree_view.setCurrentIndex(default_index)
@@ -151,34 +299,7 @@ class MainWindow(QMainWindow):
         image_path, _ = file_dialog.getOpenFileName(self, "Open Image", QDir.homePath(), "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
         if image_path:
             self.open_image_viewer(image_path)
-
-    def about(self):
-        # Create a QMessageBox
-        msg_box = QMessageBox()
-        msg_box.setWindowTitle("About")
-        msg_box.setIcon(QMessageBox.Icon.Information)
-
-        # Set text and customize appearance
-        msg_box.setText(
-            "<p>This is an experimental Python-based image visualizer and editor.</p>"
-            "<p>Copyright (c) 2024 VisuAlysium</p>"
-            "<p>This program is free software: you can redistribute it and/or modify it under the terms of the "
-            "GNU General Public License as published by the Free Software Foundation, either version 3 of the License, "
-            "or (at your option) any later version.</p>"
-            "<p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without "
-            "even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General "
-            "Public License for more details.</p>"
-            "<p>You should have received a copy of the GNU General Public License along with this program. If not, "
-            "see <a href='http://www.gnu.org/licenses/'>http://www.gnu.org/licenses/</a>.</p>"
-        )
-
-        # Set fixed size
-        msg_box.setFixedSize(800, 400)
-
-        # Display the message box
-        msg_box.exec()
-
-        
+       
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
             # Create a confirmation dialog
@@ -207,29 +328,9 @@ def main():
     app = QApplication(sys.argv)
     
     # Set the application style to Fusion
+    # ['Breeze', 'Oxygen', 'QtCurve', 'Windows', 'Fusion']
     app.setStyle("Fusion")
-
-    # Create a dark palette
-    palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-    palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-    palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
-    app.setPalette(palette)
-
-    # Change some style settings
-    app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
-        # Set application icon
-
+    
     window = MainWindow()
 
     # Get the screen dimensions

@@ -119,7 +119,12 @@ class FolderExplorer(QWidget):
         self.setLayout(layout)
 
         self.view.doubleClicked.connect(self.on_double_clicked)
-    
+        
+    def update_colors(self):
+        palette = QApplication.instance().palette()
+        self.setStyleSheet(f"background-color: {palette.color(QPalette.ColorRole.Base).name()};")
+        # Add more style changes as needed based on the widget's components
+
     def navigate_up(self):
         # Navigate up one directory level
         current_directory = QDir(self.path)
