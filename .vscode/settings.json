@@ -1,0 +1,6 @@
+{
+  "python.pythonPath": "${workspaceFolder}/env/bin/python",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",  // Adjust if using a different shell
+  "terminal.integrated.automationShell.linux": "/bin/bash",  // Or your shell path
+  "terminal.integrated.automationShell.osx": "/bin/zsh"     // Or your shell path
+}
