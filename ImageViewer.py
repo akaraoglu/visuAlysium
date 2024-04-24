@@ -218,7 +218,7 @@ class ImageViewer(QGraphicsView):
         self.copyAction.triggered.connect(self.copyImage)
         self.pasteAction = QAction("Paste Image", self)
         self.pasteAction.triggered.connect(self.pasteImage)
-        self.saveAction = QAction("Save Image", self)
+        self.saveAction = QAction("Save As ...", self)
         self.saveAction.triggered.connect(self.saveImage)
 
         self.contextMenu.addAction(self.copyAction)
@@ -330,7 +330,7 @@ class ImageViewer(QGraphicsView):
 
     def saveImage(self):
         if self.pixmap_item is not None:
-            filename, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "Images (*.png *.jpg *.bmp)")
+            filename, _ = QFileDialog.getSaveFileName(self, "Save As", "", "Images (*.png *.jpg *.bmp)")
             if filename:
                 self.pixmap_item.pixmap().save(filename)
 

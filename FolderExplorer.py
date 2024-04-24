@@ -1,13 +1,12 @@
-import sys, math
+
 import os
 import sys
-from PyQt6.QtCore import Qt, QModelIndex, QDir, QStandardPaths, QSize, QThreadPool, QRunnable, QObject, pyqtSignal, pyqtSlot, QThread
-from PyQt6.QtGui import QPixmap, QFont, QIcon, QAction, QPalette, QColor, QFileSystemModel, QStandardItem, QStandardItemModel
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QTreeView, QVBoxLayout, QLineEdit, QHBoxLayout, QWidget, QListWidget, QListView, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
-from ImageEditorWindow import ImageViewerWindow
-import numpy as np
-supported_extensions = ['*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp', '*.dng']
-supported_extensions_list = [ext.replace('*.', '') for ext in supported_extensions]
+from PyQt6.QtCore import Qt, QModelIndex, QDir, QSize, pyqtSignal, pyqtSlot, QThread
+from PyQt6.QtGui import QPixmap, QFont, QIcon, QPalette, QFileSystemModel
+from PyQt6.QtWidgets import QApplication, QPushButton, QVBoxLayout, QLineEdit, QHBoxLayout, QWidget,QListView
+
+from ImageProcessingAlgorithms import supported_extensions
+# supported_extensions_list = [ext.replace('*.', '') for ext in raw_extensions]
 
 class FileSystemModelImagesOnly(QFileSystemModel):
     def __init__(self, cacheWidth=100, cacheHeight=100):
@@ -119,7 +118,7 @@ class FolderExplorer(QWidget):
         self.setLayout(layout)
 
         self.view.doubleClicked.connect(self.on_double_clicked)
-        
+
     def update_colors(self):
         palette = QApplication.instance().palette()
         self.setStyleSheet(f"background-color: {palette.color(QPalette.ColorRole.Base).name()};")
@@ -173,8 +172,7 @@ class FolderExplorer(QWidget):
             # If it's a directory, update the view to show the contents of this directory
             self.update_root_path(file_path)
 
-        elif file_path.endswith(tuple(supported_extensions_list)):  # Check if it's an image
-            # Optionally do something specific for image files, like opening in an image viewer
+        else:
             self.open_image_viewer(file_path)
 
     def open_image_viewer(self, file_path):

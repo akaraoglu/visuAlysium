@@ -36,12 +36,39 @@ import sys
 import cv2
 import numpy as np
 import rawpy
-from PyQt6.QtGui import QImage
+from PyQt6.QtGui import QImage, QImageReader
 from numpy.lib.stride_tricks import as_strided
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
+supportedFormats = QImageReader.supportedImageFormats()
+text_filter = "Images ({})".format(" ".join(["*.{}".format(fo.data().decode()) for fo in supportedFormats]))
+print(text_filter)
 
+raw_extensions = [
+    '*.cr2', '*.cr3', '*.crw',  # Canon
+    '*.nef', '*.nrw',          # Nikon
+    '*.pef',                  # Pentax
+    '*.raf',                  # Fuji
+    '*.rwl',                  # Leica
+    '*.mrw',                  # Minolta
+    '*.orf',                  # Olympus
+    '*.srw',                  # Samsung
+    '*.x3f',                  # Sigma
+    '*.arw', '*.sr2', '*.srf',  # Sony
+    '*.rw2',                  # Panasonic
+    '*.dng'                   # Adobe DNG
+]
+
+standard_extensions = [
+    '*.jpg', '*.jpeg', '*.bmp', '*.gif', '*.png', '*.tiff',
+    '*.pcx', '*.tga', '*.jp2', '*.psd', '*.eps', '*.wmf',
+    '*.cur', '*.heic', '*.webp', '*.pdf',  # Existing extensions
+    '*.icns', '*.ico', '*.pbm', '*.pgm', '*.ppm', '*.svg',
+    '*.svgz', '*.wbmp', '*.xbm', '*.xpm'  # New extensions added
+]
+
+supported_extensions = raw_extensions + standard_extensions
 
 kelvin_list = [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900,
             2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900,
@@ -489,15 +516,15 @@ rawpy_params = rawpy.Params(
     chromatic_aberration=None, 
     bad_pixels_path=None)
 
-
 def load_image_to_qimage(image_path):
+
     # Check if the file is a RAW file by its extension
-    if image_path.lower().endswith(('.raw', '.cr2', '.nef', '.arw', '.dng')):
+    if any(image_path.lower().endswith(ext) for ext in raw_extensions):
         try:
             # Handle RAW files
             with rawpy.imread(image_path) as raw:
                 # Postprocess and get the image data as a numpy array
-                rgb_image = raw.postprocess(rawpy_params)
+                rgb_image = raw.postprocess()
             # Convert the image to a format that QImage can handle
             height, width, colors = rgb_image.shape
             bytes_per_line = 3 * width
@@ -517,8 +544,6 @@ def load_image_to_qimage(image_path):
         print("Unable to load image.")
         return None
 
-    # # Convert QImage to QPixmap for display
-    # pixmap = QPixmap.fromImage(image)
     return image
 
 

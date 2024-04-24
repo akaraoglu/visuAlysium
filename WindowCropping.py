@@ -1,11 +1,9 @@
-from PyQt6.QtWidgets import QMainWindow,  QVBoxLayout, QHBoxLayout, QWidget, QLabel, QSizePolicy, QPushButton, QMessageBox, QSpacerItem, QToolBar, QGridLayout, QLineEdit, QApplication
-from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, QPointF, QSizeF
-from PyQt6.QtGui import QPixmap, QIcon, QAction, QIntValidator
-from ImageViewer import ImageViewer
+from PyQt6.QtWidgets import  QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QLineEdit, QApplication
+from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize
+from PyQt6.QtGui import QPixmap, QIntValidator, QPalette
+
 from WidgetUtils import HoverButton
 from WindowImageViewerAbstract import ImageViewerWindowAbstract
-from PyQt6.QtWidgets import QPushButton, QSlider, QApplication
-from PyQt6.QtGui import QIcon, QPalette
 
 class CropWindow_ButtonLayout(QHBoxLayout):
     flip_v_clicked = pyqtSignal()

@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QGridLayout, QPushButton, QLabel, QListWidget, QListWidgetItem, QWidget, QSizePolicy, QVBoxLayout, QHBoxLayout, QMenu
-from PyQt6.QtGui import QPixmap, QIcon, QMouseEvent
-from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize, QObject, QEvent
+from PyQt6.QtWidgets import QApplication, QGridLayout, QLabel, QListWidget, QListWidgetItem, QWidget, QSizePolicy, QVBoxLayout, QMenu
+from PyQt6.QtGui import QPixmap, QIcon
+from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize
 from ImageViewer import ImageViewer
 from WidgetUtils import HoverButton
 from WindowCropping import WindowCropping

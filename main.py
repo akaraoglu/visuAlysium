@@ -74,7 +74,8 @@ class MainWindow(QMainWindow):
         # Setting the width of the columns do not work if it is set before the splitters added.
         # Uknown issue. 
         self.setup_folder_tree_view()
-
+        
+        self.set_theme("dark") # Default Mode
             
     def setup_menus(self):
         # Create a menu bar
@@ -89,7 +90,10 @@ class MainWindow(QMainWindow):
         file_menu.addAction(open_image_action)
         open_folder_action.triggered.connect(self.open_folder)
         open_image_action.triggered.connect(self.open_image)
-
+        exit_action = QAction("Exit", self)  # Create the exit action
+        file_menu.addSeparator()  # Optionally add a separator before the exit action
+        file_menu.addAction(exit_action)
+        
         # Create a "Help" menu
         help_menu = QMenu("&Help", self)
         
@@ -125,14 +129,13 @@ class MainWindow(QMainWindow):
         dark_theme_action.triggered.connect(lambda: self.set_theme("dark"))
         gray_theme_action.triggered.connect(lambda: self.set_theme("gray"))
         light_theme_action.triggered.connect(lambda: self.set_theme("light"))
+        exit_action.triggered.connect(self.exit_application)  # Connect the exit action to its handler
         
-        self.set_theme("dark")
-
         # Add tje file menus in order.
         menu_bar.addMenu(file_menu)
-        menu_bar.addMenu(help_menu)
         menu_bar.addMenu(settings_menu)
-        
+        menu_bar.addMenu(help_menu)
+
 
     def set_theme(self, theme_name):
         palette = QPalette()
@@ -299,24 +302,20 @@ class MainWindow(QMainWindow):
         image_path, _ = file_dialog.getOpenFileName(self, "Open Image", QDir.homePath(), "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)")
         if image_path:
             self.open_image_viewer(image_path)
-       
+
+    def exit_application(self):
+        reply = QMessageBox.question(self, 'Exit Confirmation', 
+                                    'Are you sure you want to exit?', 
+                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                    QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            QApplication.instance().quit()  # Exit the application
+                
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
-            # Create a confirmation dialog
-            reply = QMessageBox.question(self, 'Exit Confirmation', 
-                                        'You are exiting the application. Are you sure?',
-                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                        QMessageBox.StandardButton.No)
-            
-            if reply == QMessageBox.StandardButton.Yes:
-                QApplication.instance().quit()  # Close the app if 'Yes' is clicked
-            else:
-                event.ignore()  # Ignore the event if 'No' is clicked
+           self.exit_application()
 
         super().keyPressEvent(event)  # Continue processing other key events
-
-
-from PyQt6.QtGui import QPalette, QColor
 
 def main():
     
