@@ -159,7 +159,11 @@ class CropWindow(QWidget):
 
         # Set geometry to center the window with desired size
         self.setGeometry(x, y, width, height)
-
+    
+    def keyPressEvent(self, event):
+        self.image_viewer.keyPressEvent(event)
+        super().keyPressEvent(event)
+        
     def update_crop_info_in_button_layer(self, crop_rect):
         # Assuming the crop_rect is a QRectF or similar
         self.button_layer.set_crop_info(crop_rect.x(), crop_rect.y(), crop_rect.width(), crop_rect.height())

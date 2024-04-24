@@ -122,7 +122,6 @@ class CustomInfoPanel(QWidget):
         scaled_pixmap = pixmap.scaled(self.histogram_display.width(), self.histogram_display.height())
         self.histogram_display.setPixmap(scaled_pixmap)
 
-            
 class ImageViewer(QGraphicsView):
     crop_rectangle_changed = pyqtSignal(QRectF)
 
@@ -176,7 +175,7 @@ class ImageViewer(QGraphicsView):
         self.rect_start_point = None
 
         self.image_path = ""
-        self.info_display_visible = True
+        self.info_display_visible = False
         self.info_widget = CustomInfoPanel(self)
         self.info_label_proxy = QGraphicsProxyWidget()
         self.info_label_proxy.setWidget(self.info_widget)
@@ -187,7 +186,10 @@ class ImageViewer(QGraphicsView):
         
         self.curve_option = "Luminance" #default
         self.info_widget.channel_combo_box.currentTextChanged.connect(self.channel_option_selected)
-    
+        
+        # Set the focus policy to accept focus by tabbing and clicking
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
     def init_info_display(self):
         if self.info_display_visible == True:
             # self.info_label_proxy.setVisible(True)
@@ -222,10 +224,6 @@ class ImageViewer(QGraphicsView):
         self.contextMenu.addAction(self.copyAction)
         self.contextMenu.addAction(self.pasteAction)
         self.contextMenu.addAction(self.saveAction)
-        
-    def keyPressEvent(self, event):
-        print(f"Image Viewer Key pressed: {event.key()}")
-        super().keyPressEvent(event)
     
     def toggle_zoom_mode(self):
         if self.transform().m11() == 1.0:  # If the current zoom is 100% (original size)
@@ -499,7 +497,19 @@ class ImageViewer(QGraphicsView):
                 self.setCursor(Qt.CursorShape.OpenHandCursor)
             else:
                 self.setCursor(Qt.CursorShape.CrossCursor)
-    
+
+        if event.key() == Qt.Key.Key_1:
+            self.toggle_zoom_mode()
+        elif event.key() == Qt.Key.Key_2:
+            self.set_zoom(2.0)  # 200%
+        elif event.key() == Qt.Key.Key_3:
+            self.set_zoom(3.0)  # 300%
+        elif event.key() == Qt.Key.Key_4:
+            self.set_zoom(4.0)  # 400%
+        # Check if the pressed key is Esc
+        elif event.key() == Qt.Key.Key_Escape:
+            self.parent().close()  # Close the window
+            
     def keyReleaseEvent(self, event):
         if (self.regionZoomKey is not None) and (event.key() == self.regionZoomKey):
             self.regionZoomKeyPressed = False
@@ -508,7 +518,7 @@ class ImageViewer(QGraphicsView):
                 self.setCursor(Qt.CursorShape.CrossCursor)
             else:
                 self.setCursor(Qt.CursorShape.ArrowCursor)
-    
+
 
     def mousePressEvent(self, event):
         # Start dragging to pan?

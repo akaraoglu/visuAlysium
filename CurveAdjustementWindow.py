@@ -224,10 +224,15 @@ class CurveAdjustmentWindow(QWidget):
     def curve_option_selected(self, option):
         print(f"Selected curve option: {option}")
         self.curve_channel = option
+        self.reset_pressed()
+        self.update_image()
         # Implement functionality based on selected option
 
     def set_image(self, pixmap_image):
+        self.curve_channel_dropdown.setCurrentIndex(0)
+        self.curve_channel = self.curve_channel_dropdown.currentText()
         self.reset_pressed()
+
         self.pixmap_image_orig = pixmap_image
         new_width = 800
         new_height = 800
@@ -263,7 +268,7 @@ class CurveAdjustmentWindow(QWidget):
                                                       channel=self.curve_channel)
         
     def reset_pressed(self):
-        print("Reset")
+        print("Reset curves.")
         self.curve_widget_global.reset_curve()
         self.curve_widget_local_highlight.reset_curve()
         self.curve_widget_local_shadow.reset_curve()
@@ -271,3 +276,7 @@ class CurveAdjustmentWindow(QWidget):
 
     def histogram_pressed(self):
         self.image_viewer.toggle_info_display()
+    
+    def keyPressEvent(self, event):
+        self.image_viewer.keyPressEvent(event)
+        super().keyPressEvent(event)

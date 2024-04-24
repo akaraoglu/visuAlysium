@@ -20,3 +20,4 @@ class ColorsWindow(ImageEditingsWindow):
         self.red_value          = self.slider_layer.sliders["R"].value()            /50.0
         self.green_value        = self.slider_layer.sliders["G"].value()            /50.0
         self.blue_value         = self.slider_layer.sliders["B"].value()            /50.0
+    

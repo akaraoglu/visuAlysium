@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QApplication, QMainWindow, QGridLayout, QPushButton, QLabel, QListWidget, QListWidgetItem, QWidget, QSizePolicy, QVBoxLayout, QHBoxLayout, QMenu
 from PyQt6.QtGui import QPixmap, QIcon, QMouseEvent
-from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize
+from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize, QObject, QEvent
 from ImageViewer import ImageViewer
 from WidgetUtils import HoverButton
 from CropWindow import CropWindow
@@ -187,9 +187,10 @@ class ImageViewerWindow(QWidget):
 
         # Set geometry to center the window with desired size
         self.setGeometry(x, y, width, height)
+        self.image_viewer.setFocus()
     
     def keyPressEvent(self, event):
-        print(f"Key pressed: {event.key()}")
+        self.image_viewer.keyPressEvent(event)
         super().keyPressEvent(event)
         
     def show_image_from_history(self, pixmap):

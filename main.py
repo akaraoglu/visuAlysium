@@ -144,6 +144,22 @@ class MainWindow(QMainWindow):
         # Display the message box
         msg_box.exec()
 
+        
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            # Create a confirmation dialog
+            reply = QMessageBox.question(self, 'Exit Confirmation', 
+                                        'You are exiting the application. Are you sure?',
+                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                        QMessageBox.StandardButton.No)
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                QApplication.instance().quit()  # Close the app if 'Yes' is clicked
+            else:
+                event.ignore()  # Ignore the event if 'No' is clicked
+
+        super().keyPressEvent(event)  # Continue processing other key events
+
 
 from PyQt6.QtGui import QPalette, QColor
 

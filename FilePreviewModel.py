@@ -175,4 +175,25 @@ class FolderExplorer(QWidget):
     def open_image_viewer(self, file_path):
         self.show_image.emit(file_path)
         
-        
+    
+    def keyPressEvent(self, event):
+        print("keyPressEvent : ", event.key())
+
+        if event.key() == Qt.Key.Key_Return:
+            index = self.view.currentIndex()
+            print(index)
+            if not index.isValid():
+                return
+
+            # Get the file path from the model
+            file_path = self.files.filePath(index)
+
+            if os.path.isdir(file_path):
+                # If it's a directory, update the view to show the contents of this directory
+                self.update_root_path(file_path)
+
+            elif file_path.endswith(tuple(supported_extensions_list)):  # Check if it's an image
+                # Optionally do something specific for image files, like opening in an image viewer
+                self.open_image_viewer(file_path)
+
+        super().keyPressEvent(event)

@@ -165,3 +165,7 @@ class ImageEditingsWindow(QWidget):
 
     def histogram_pressed(self):
         self.image_viewer.toggle_info_display()
+    
+    def keyPressEvent(self, event):
+        self.image_viewer.keyPressEvent(event)
+        super().keyPressEvent(event)
