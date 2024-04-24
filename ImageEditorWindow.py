@@ -3,11 +3,11 @@ from PyQt6.QtGui import QPixmap, QIcon, QMouseEvent
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize, QObject, QEvent
 from ImageViewer import ImageViewer
 from WidgetUtils import HoverButton
-from CropWindow import CropWindow
+from WindowCropping import WindowCropping
 
-from LightingWindow import LightingWindow
-from ColorsWindow import ColorsWindow
-from CurveAdjustementWindow import CurveAdjustmentWindow
+from WindowLighting import WindowLighting
+from WindowColors import WindowColors
+from WindowCurveAdjustement import WindowCurveAdjustement
 
 class ImageEditor_ButtonLayout(QWidget):
     
@@ -23,8 +23,8 @@ class ImageEditor_ButtonLayout(QWidget):
     def __init__(self):
         super().__init__()
         
-        self.button_size = 60  # Button size
-        self.icon_size = 40  # Icon size inside the button
+        self.button_size = QSize(120,60)  # Button size (width and height)
+        self.icon_size = QSize(40,40)  # Icon size within the button
 
         # Create a layout for buttons
         layout = QGridLayout()
@@ -33,10 +33,10 @@ class ImageEditor_ButtonLayout(QWidget):
 
         # Create and add buttons for each action
         self.add_button("icons/histogram.png", "Histogram", self.button_histogram_clicked)
-        self.add_button("icons/crop.png", "Adjust Cropping", self.button_crop_clicked)
-        self.add_button("icons/brightness.png", "Adjust Lighting", self.button_brightness_clicked)
-        self.add_button("icons/colors.png", "Adjust Colors", self.button_colors_clicked)
-        self.add_button("icons/edit-image.png", "Adjust Curve", self.button_edit_curve_clicked)
+        self.add_button("icons/crop.png", "Cropping", self.button_crop_clicked)
+        self.add_button("icons/brightness.png", "Lighting", self.button_brightness_clicked)
+        self.add_button("icons/colors.png", "Colors", self.button_colors_clicked)
+        self.add_button("icons/edit-image.png", "Curves", self.button_edit_curve_clicked)
         self.add_button("icons/edit-image-2.png", "Sharpness", self.button_effects_clicked)
         # Assuming the "De-Noise" button should have a unique action, use `button_de_noise_clicked` signal
         self.add_button("icons/edit-image-2.png", "De-Noise", self.button_de_noise_clicked)
@@ -45,7 +45,7 @@ class ImageEditor_ButtonLayout(QWidget):
 
     def add_button(self, icon, tooltip, signal):
         # Assuming HoverButton is a custom button class that supports `setToolTip` and `clicked` signal
-        new_button = HoverButton(self, icon=icon, button_size=self.button_size, icon_size=self.icon_size)
+        new_button = HoverButton(self, text=tooltip, icon=icon, button_size=self.button_size, icon_size=self.icon_size)
         new_button.setToolTip(tooltip)  # Set tooltip for the button
         new_button.clicked.connect(signal.emit)  # Connect button click to the respective signal
         self.layout().addWidget(new_button)  # Add button to the layout
@@ -131,13 +131,13 @@ class ImageViewerWindow(QWidget):
         self.history_widget = HistoryWidget()  # Create instance of HistoryWidget
         self.buttons_layer = ImageEditor_ButtonLayout()
         
-        self.crop_window = CropWindow()
+        self.crop_window = WindowCropping()
         self.crop_window.editing_confirmed.connect(self.editing_confirmed)
-        self.lighting_window = LightingWindow()
+        self.lighting_window = WindowLighting()
         self.lighting_window.editing_confirmed.connect(self.editing_confirmed)
-        self.colors_window = ColorsWindow()
+        self.colors_window = WindowColors()
         self.colors_window.editing_confirmed.connect(self.editing_confirmed)
-        self.curve_editing = CurveAdjustmentWindow()
+        self.curve_editing = WindowCurveAdjustement()
         self.curve_editing.editing_confirmed.connect(self.editing_confirmed)
 
         main_layout = QGridLayout(self)

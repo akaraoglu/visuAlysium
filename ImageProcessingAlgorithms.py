@@ -303,7 +303,7 @@ def convertQImageToArray(image):
 
     return np.array(view, copy=True, order='C')
 
-def adjust_contrast_brightness_gamma(image, contrast_amount, brightness_amount, gamma_amount):
+def adjust_contrast_brightness_gamma(image, contrast_amount, brightness_amount, gamma_amount, shadows_amount, highlights_amount, weight_mask):
     """
     Adjusts the contrast, brightness, and applies gamma correction to an image.
     
@@ -335,7 +335,11 @@ def adjust_contrast_brightness_gamma(image, contrast_amount, brightness_amount, 
     adjusted_range = np.clip(((gamma_corrected - min_val / 255) / ((max_val - min_val) / 255) * (target_max - target_min) + target_min) + (brightness_amount * 255), 0, 255).astype(np.uint8)
     
     # Apply the lookup table
-    return cv2.LUT(image, adjusted_range)
+    image_global = cv2.LUT(image, adjusted_range)
+    adjusted_shadows = np.clip((image_global) + (shadows_amount * 255), 0, 255).astype(np.uint8)
+    adjusted_highlights = np.clip((image_global) + (highlights_amount * 255), 0, 255).astype(np.uint8)
+    mask_norm = (weight_mask[:,:,None]/255.0)
+    return ( mask_norm * adjusted_highlights) + ((1-mask_norm) * adjusted_shadows)
 
 # Adjust Sharpening
 def color_sharpening(image, amount):

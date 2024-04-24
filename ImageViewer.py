@@ -143,9 +143,9 @@ class ImageViewer(QGraphicsView):
         self._scenePosition = QPointF()
         self._crop_mode = False
 
-        self.button_size = 60
-        self.icon_size = 40
-        
+        self.button_size = QSize(60,60)  # Button size (width and height)
+        self.icon_size = QSize(40,40)  # Icon size within the button
+
         self.current_pixmap = None
         self.previous_pixmap = None
         self.original_pixmap = None
@@ -237,7 +237,7 @@ class ImageViewer(QGraphicsView):
 
 
     def create_new_button(self, icon, connect_to):
-        new_button = HoverButton(self, icon=icon, button_size=self.button_size, icon_size=self.icon_size)
+        new_button = HoverButton(self, text="", icon=icon, button_size=self.button_size, icon_size=self.icon_size)
         new_button.clicked.connect(connect_to)  # Connect button click to originalSize method
 
         # Add the buttons to the scene
@@ -339,16 +339,15 @@ class ImageViewer(QGraphicsView):
         number_of_buttons = len(self.button_list)
         bottom_center = int(self.width() / 2)
         dis_bet_buttons = 5
-        height_needed = self.button_size + 15 # distance from lower boundry
-        width_needed  = (self.button_size * number_of_buttons) + (dis_bet_buttons*(number_of_buttons-1)) #  distance between the buttons
+        height_needed = self.button_size.height() + 15 # distance from lower boundry
+        width_needed  = (self.button_size.width()  * number_of_buttons) + (dis_bet_buttons*(number_of_buttons-1)) #  distance between the buttons
 
         y = self.height() - height_needed
 
         for i,button in enumerate(self.button_list):
-
-            x = bottom_center - int(width_needed/2 - (self.button_size*i) - (dis_bet_buttons*i))
+            x = bottom_center - int(width_needed/2 - (self.button_size.width()*i) - (dis_bet_buttons*i))
             # Position the buttons at the bottom center
-            button.setGeometry(x, y, self.button_size, self.button_size)
+            button.setGeometry(x, y, self.button_size.width(), self.button_size.height())
     
     def show_image_initial_size(self):
         pixmapSize = self.pixmap_item.sceneBoundingRect().size()
@@ -694,11 +693,13 @@ class ImageViewer(QGraphicsView):
             self.show_image_initial_size()  # Adjust the view to fit the rotated image
             self.reset_rect()
 
-    def adjust_lightning(self, contrast_value, brightness_value, gamma_value):
-        print("Adjust Contrast: %.2f  Brightness: %.2f  Gamma: %.2f" % (contrast_value, brightness_value, gamma_value))
-        
+    def adjust_lightning(self, contrast_value, brightness_value, gamma_value, shadows_value, highlights_value):
+        print("Adjust Contrast: %.2f  Brightness: %.2f  Gamma: %.2f Shadows: %.2f Highlights: %.2f" % (contrast_value, brightness_value, gamma_value, shadows_value, highlights_value))
+
+        mask_fulres_cv = self.create_mask_luminance()
+
         image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
-        image_cv = ImageProcessingAlgorithms.adjust_contrast_brightness_gamma(image_cv, contrast_value, brightness_value, gamma_value)
+        image_cv = ImageProcessingAlgorithms.adjust_contrast_brightness_gamma(image_cv, contrast_value, brightness_value, gamma_value, shadows_value, highlights_value, mask_fulres_cv)
         image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
         self.current_pixmap = image_pixmap
         self.show_pixmap(self.current_pixmap)
@@ -721,27 +722,28 @@ class ImageViewer(QGraphicsView):
         self.current_pixmap = image_pixmap
         self.show_pixmap(self.current_pixmap)
     
+    def create_mask_luminance(self):
+        grayscale_image = self.get_original_pixmap().toImage().convertToFormat(QImage.Format.Format_Grayscale8)
+        mask_lowres = grayscale_image.scaled(64, 64)    
+        mask_fulres = mask_lowres.scaled(self.get_original_pixmap().width(), 
+                                            self.get_original_pixmap().height(), 
+                                            Qt.AspectRatioMode.IgnoreAspectRatio, 
+                                            Qt.TransformationMode.SmoothTransformation)
+        
+        mask_fulres_cv = ImageProcessingAlgorithms.convertQImageToArray(mask_fulres)[:,:,0] # decerease the 3 dimension to 2
+        return mask_fulres_cv
+    
     def apply_lut_to_current_pixmap(self, lut_global, lut_shadows, lut_highlight, mask, channel):
         print("Apply LUT to current image.")
-        
-        
 
         if self.original_pixmap is not None:
-            # Generate mask
-            grayscale_image = self.get_original_pixmap().toImage().convertToFormat(QImage.Format.Format_Grayscale8)
-            mask_lowres = grayscale_image.scaled(16, 16)    
-            mask_fulres = mask_lowres.scaled(self.get_original_pixmap().width(), 
-                                                self.get_original_pixmap().height(), 
-                                                Qt.AspectRatioMode.IgnoreAspectRatio, 
-                                                Qt.TransformationMode.SmoothTransformation)
-            
-            mask_fulres_cv = ImageProcessingAlgorithms.convertQImageToArray(mask_fulres)[:,:,0] # decerease the 3 dimension to 2
+            mask_fulres_cv = self.create_mask_luminance()
             
             image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
             image_cv = ImageProcessingAlgorithms.apply_lut_global(image_cv, lut_global, channel)
-            
             image_cv = ImageProcessingAlgorithms.apply_lut_local(image_cv, lut_shadows, lut_highlight, channel, mask_fulres_cv)
             image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
+
             self.current_pixmap = image_pixmap
             self.show_pixmap(self.current_pixmap)
 

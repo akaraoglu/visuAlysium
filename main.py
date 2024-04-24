@@ -1,10 +1,44 @@
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# This file is part of VisuAlysium, which is released under the GNU General Public License (GPL).
+# See the LICENSE or COPYING file in the root of this project or visit 
+# http://www.gnu.org/licenses/gpl-3.0.html for the full text of the license.
+
+"""
+VisuAlysium 
+=================================================================
+
+This file is the main class for image visualization and editing application. 
+
+(c) Visualysium, 2024
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""
+
+__author__ = "Ali Karaoglu"
+__version__ = "0.0.0"
+__date__ = "2024-04-10"
+
 import os
 import sys
-from PyQt6.QtCore import Qt, QDir, QStandardPaths, QSize, QThreadPool, QRunnable, QObject, pyqtSignal, pyqtSlot, QThread
-from PyQt6.QtGui import QPixmap, QIcon, QAction, QPalette, QColor, QFileSystemModel, QStandardItem, QStandardItemModel
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QListWidget, QListView, QListWidgetItem, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
+from PyQt6.QtCore import Qt, QDir, QStandardPaths
+from PyQt6.QtGui import QIcon, QAction, QPalette, QColor, QFileSystemModel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
 from ImageEditorWindow import ImageViewerWindow
-from FilePreviewModel import FolderExplorer
+from FolderExplorer import FolderExplorer
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -21,7 +55,7 @@ class MainWindow(QMainWindow):
         file_menu = QMenu("&File", self)
         menu_bar.addMenu(file_menu)
 
-        self.image_viewer = ImageViewerWindow()
+        self.image_viewer_window = ImageViewerWindow()
 
         # Create actions for the "File" menu
         open_folder_action = QAction("Open Folder", self)
@@ -100,12 +134,12 @@ class MainWindow(QMainWindow):
 
     def image_double_clicked(self, item):
         image_path = item.toolTip()
-        self.image_viewer.show()
-        self.image_viewer.show_new_image(image_path)
+        self.image_viewer_window.show()
+        self.image_viewer_window.show_new_image(image_path)
 
     def open_image_viewer(self, image_path):
-        self.image_viewer.show()
-        self.image_viewer.show_new_image(image_path)
+        self.image_viewer_window.show()
+        self.image_viewer_window.show_new_image(image_path)
 
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")

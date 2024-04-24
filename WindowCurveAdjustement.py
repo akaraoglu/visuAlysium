@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLa
 from PyQt6.QtGui import QPainter, QPen, QColor, QLinearGradient, QBrush
 
 from ImageViewer import ImageViewer
+from WindowImageViewerAbstract import ImageViewerWindowAbstract
 
 from scipy.interpolate import CubicSpline, interp1d
 
@@ -123,33 +124,15 @@ class CurveWidget(QWidget):
     def reset_curve(self):
         self.initialize_curve()  # Reset curve and update widget
 
-class CurveAdjustmentWindow(QWidget):
-    editing_confirmed = pyqtSignal(QPixmap, str)
-    
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Image Editing Window")
-        
-        # Assuming ImageViewer and CurveWidget are defined elsewhere
-        self.image_viewer = ImageViewer()
-        self.pixmap_image_orig = None
+class CurveEditingLayout(QVBoxLayout):
 
+    def __init__(self, parent=None):
+        super().__init__(parent)
         # Curve widgets
         self.curve_widget_global = CurveWidget()
         self.curve_widget_local_shadow = CurveWidget()
         self.curve_widget_local_highlight = CurveWidget()
         
-        # Connect the global curve's update method
-        self.curve_widget_global.curve_updated = self.update_image
-        self.curve_widget_local_shadow.curve_updated = self.update_image
-        self.curve_widget_local_highlight.curve_updated = self.update_image
-
-        # Setup curve option dropdown
-        self.curve_channel_dropdown = QComboBox()
-        self.curve_channel_dropdown.addItems(["Luminance", "Red", "Green", "Blue"])
-        self.curve_channel_dropdown.currentTextChanged.connect(self.curve_option_selected)
-        self.curve_channel = "Luminance" # Set default
-
         # Create grid layout for curves with labels
         curve_layout = QGridLayout()
         
@@ -163,120 +146,58 @@ class CurveAdjustmentWindow(QWidget):
         curve_layout.addWidget(QLabel("Local Highlights"), 0, 2, 1, 1, Qt.AlignmentFlag.AlignCenter)
         curve_layout.addWidget(self.curve_widget_local_highlight, 1, 2, Qt.AlignmentFlag.AlignCenter)
 
-        # Main vertical layout
-        main_layout = QVBoxLayout(self)
+        # Setup curve option dropdown
+        channel_selection_layout = QHBoxLayout()
+        self.curve_channel_dropdown = QComboBox()
+        self.curve_channel_dropdown.addItems(["Luminance", "Red", "Green", "Blue"])
         
-        # Layout for curve options and confirmation buttons
-        options_layout = QHBoxLayout()
-        options_layout.addWidget(QLabel("Adjustment Type:"))
-        options_layout.addWidget(self.curve_channel_dropdown)
-        options_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        self.curve_channel = "Luminance" # Set default
+        channel_selection_layout.addWidget(QLabel("Adjustment Type:"))
+        channel_selection_layout.addWidget(self.curve_channel_dropdown)
+        channel_selection_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        self.addLayout(curve_layout)
+        self.addLayout(channel_selection_layout)
 
-        confirmation_layout = QHBoxLayout()
-        self.setup_buttons(confirmation_layout)
-        
-        # Adding sub-layouts to the main layout
-        main_layout.addWidget(self.image_viewer)
-        main_layout.addLayout(options_layout)
-        main_layout.addLayout(curve_layout)
-        main_layout.addLayout(confirmation_layout)
-        
-        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
-
-        # Center and size the window
-        self.center_and_size_window()
+class WindowCurveAdjustement(ImageViewerWindowAbstract):
+    editing_confirmed = pyqtSignal(QPixmap, str)
     
-    def setup_buttons(self, layout):
-        # Buttons for various actions
-        hdtsoi_button = QPushButton("Hold Down to See Original Image")
-        hdtsoi_button.pressed.connect(self.hdtsoi_pressed)
-        hdtsoi_button.released.connect(self.hdtsoi_released)
-        
-        reset_button = QPushButton("Reset")
-        reset_button.pressed.connect(self.reset_pressed)
-        
-        hist_button = QPushButton("Histogram")
-        hist_button.pressed.connect(self.histogram_pressed)
-        
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(self.ok_pressed)
-        
-        cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(self.cancel_pressed)
-        
-        # Adding buttons to layout
-        layout.addWidget(hdtsoi_button)
-        layout.addWidget(reset_button)
-        layout.addWidget(hist_button)
-        layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
-        layout.addWidget(ok_button)
-        layout.addWidget(cancel_button)
-    
-    def center_and_size_window(self):
-        screen = QApplication.primaryScreen()
-        screen_size = screen.size()
-        width = screen_size.width() // 2
-        height = (2 * screen_size.height()) // 3
-        x = (screen_size.width() - width) // 2
-        y = (screen_size.height() - height) // 2
-        self.setGeometry(x, y, width, height)
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Curve Adjustment Window")
 
+    def create_editing_options_layout(self):
+        temp_layout = CurveEditingLayout() 
+        
+        # Connect the global curve's update method
+        temp_layout.curve_widget_global.curve_updated = self.update_image
+        temp_layout.curve_widget_local_shadow.curve_updated = self.update_image
+        temp_layout.curve_widget_local_highlight.curve_updated = self.update_image
+        temp_layout.curve_channel_dropdown.currentTextChanged.connect(self.curve_option_selected)
+        return temp_layout
+    
     def curve_option_selected(self, option):
         print(f"Selected curve option: {option}")
         self.curve_channel = option
         self.reset_pressed()
         self.update_image()
         # Implement functionality based on selected option
-
-    def set_image(self, pixmap_image):
-        self.curve_channel_dropdown.setCurrentIndex(0)
-        self.curve_channel = self.curve_channel_dropdown.currentText()
+        
+    def initialize_values(self):
+        self.editing_options_layout.curve_channel_dropdown.setCurrentIndex(0)
+        self.curve_channel = self.editing_options_layout.curve_channel_dropdown.currentText()
         self.reset_pressed()
-
-        self.pixmap_image_orig = pixmap_image
-        new_width = 800
-        new_height = 800
-        scaled_pixmap = pixmap_image.scaled(new_width, new_height, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        self.image_viewer.show_new_pixmap(scaled_pixmap)
-    
-    def hdtsoi_pressed(self):
-        print( "Curve", "Showing original image.")
-        self.image_viewer.show_pixmap(self.image_viewer.get_original_pixmap())
-
-    def hdtsoi_released(self):
-        print( "Curve", "Showing edited image.")
-        self.image_viewer.show_pixmap(self.image_viewer.get_previous_pixmap())
-
-    def ok_pressed(self):
-        print( "OK", "Changes have been applied.")
-        self.image_viewer.show_new_pixmap(self.pixmap_image_orig)
-        self.update_image()
-        self.editing_confirmed.emit(self.image_viewer.get_current_pixmap(), "Curve Adjustment")
-        self.close() #to close the window
-
-    def cancel_pressed(self):
-        # Here you would typically revert any changes or simply close the window without applying changes
-        print("Cancel", "Operation has been cancelled.")
-        self.close() #to close the window
 
     def update_image(self):
         print("Update image")
-        self.image_viewer.apply_lut_to_current_pixmap(self.curve_widget_global.curve,
-                                                      self.curve_widget_local_shadow.curve,
-                                                      self.curve_widget_local_highlight.curve,
+        self.image_viewer.apply_lut_to_current_pixmap(self.editing_options_layout.curve_widget_global.curve,
+                                                      self.editing_options_layout.curve_widget_local_shadow.curve,
+                                                      self.editing_options_layout.curve_widget_local_highlight.curve,
                                                       mask = None,
                                                       channel=self.curve_channel)
         
     def reset_pressed(self):
         print("Reset curves.")
-        self.curve_widget_global.reset_curve()
-        self.curve_widget_local_highlight.reset_curve()
-        self.curve_widget_local_shadow.reset_curve()
-        self.curve_widget_global.curve_updated()
-
-    def histogram_pressed(self):
-        self.image_viewer.toggle_info_display()
-    
-    def keyPressEvent(self, event):
-        self.image_viewer.keyPressEvent(event)
-        super().keyPressEvent(event)
+        self.editing_options_layout.curve_widget_global.reset_curve()
+        self.editing_options_layout.curve_widget_local_highlight.reset_curve()
+        self.editing_options_layout.curve_widget_local_shadow.reset_curve()
+        self.editing_options_layout.curve_widget_global.curve_updated()
