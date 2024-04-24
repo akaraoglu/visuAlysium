@@ -77,7 +77,7 @@ class MainWindow(QMainWindow):
         self.setup_folder_tree_view()
         
         self.set_theme("dark") # Default Mode
-        self.splash.finish(self)  # Close the splash screen once the main UI is ready
+        # self.splash.finish(self)  # Close the splash screen once the main UI is ready
 
             
     def setup_menus(self):
@@ -335,9 +335,9 @@ def main():
     
     
     # Prepare the splash screen
-    splash_pix = QPixmap("icons/main_logo_black.png")  # Ensure this path points to an actual image file
-    splash = QSplashScreen(splash_pix, Qt.WindowType.WindowStaysOnTopHint)
-    splash.setWindowFlags(Qt.WindowType.SplashScreen | Qt.WindowType.FramelessWindowHint)
+    splash_pix = QPixmap("icons/main_logo_black.png").scaled(600,600, aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio, transformMode=Qt.TransformationMode.SmoothTransformation)  # Ensure this path points to an actual image file
+    splash = QSplashScreen(splash_pix)
+    splash.setWindowFlags(Qt.WindowType.SplashScreen | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
     splash.setEnabled(False)  # Disable interactions
     splash.show()
     app.processEvents()  # Process any pending events to ensure the splash displays immediately
