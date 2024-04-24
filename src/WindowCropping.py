@@ -2,8 +2,8 @@ from PyQt6.QtWidgets import  QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QSpa
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QPixmap, QIntValidator, QPalette
 
-from WidgetUtils import HoverButton
-from WindowImageViewerAbstract import ImageViewerWindowAbstract
+from src.WidgetUtils import HoverButton
+from src.WindowImageViewerAbstract import ImageViewerWindowAbstract
 
 class CropWindow_ButtonLayout(QHBoxLayout):
     flip_v_clicked = pyqtSignal()

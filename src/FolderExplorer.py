@@ -5,7 +5,7 @@ from PyQt6.QtCore import Qt, QModelIndex, QDir, QSize, pyqtSignal, pyqtSlot, QTh
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QPalette, QFileSystemModel
 from PyQt6.QtWidgets import QApplication, QPushButton, QVBoxLayout, QLineEdit, QHBoxLayout, QWidget,QListView
 
-from ImageProcessingAlgorithms import supported_extensions
+from src.ImageProcessingAlgorithms import supported_extensions
 # supported_extensions_list = [ext.replace('*.', '') for ext in raw_extensions]
 
 class FileSystemModelImagesOnly(QFileSystemModel):

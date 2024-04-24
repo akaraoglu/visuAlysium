@@ -34,15 +34,16 @@ __date__ = "2024-04-10"
 
 import os
 import sys
-from PyQt6.QtCore import Qt, QDir, QStandardPaths, QUrl
-from PyQt6.QtGui import QIcon, QAction, QPalette, QColor, QFileSystemModel, QDesktopServices
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog
-from ImageEditorWindow import ImageViewerWindow
-from FolderExplorer import FolderExplorer
+from PyQt6.QtCore import Qt, QDir, QStandardPaths, QUrl, QTimer
+from PyQt6.QtGui import QIcon, QAction, QPalette, QColor, QFileSystemModel, QDesktopServices, QPixmap
+from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView, QHBoxLayout, QWidget, QSplitter, QMenu, QMenuBar, QMessageBox, QFileDialog, QSplashScreen
+from src.ImageEditorWindow import ImageViewerWindow
+from src.FolderExplorer import FolderExplorer
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, splash):
         super().__init__()
+        self.splash = splash  # Receive the splash screen as a parameter
         self.setWindowTitle("VisuAlysium - Image Editor")
         self.initUI()
 
@@ -76,6 +77,8 @@ class MainWindow(QMainWindow):
         self.setup_folder_tree_view()
         
         self.set_theme("dark") # Default Mode
+        self.splash.finish(self)  # Close the splash screen once the main UI is ready
+
             
     def setup_menus(self):
         # Create a menu bar
@@ -330,22 +333,32 @@ def main():
     # ['Breeze', 'Oxygen', 'QtCurve', 'Windows', 'Fusion']
     app.setStyle("Fusion")
     
-    window = MainWindow()
+    
+    # Prepare the splash screen
+    splash_pix = QPixmap("icons/main_logo_black.png")  # Ensure this path points to an actual image file
+    splash = QSplashScreen(splash_pix, Qt.WindowType.WindowStaysOnTopHint)
+    splash.setWindowFlags(Qt.WindowType.SplashScreen | Qt.WindowType.FramelessWindowHint)
+    splash.setEnabled(False)  # Disable interactions
+    splash.show()
+    app.processEvents()  # Process any pending events to ensure the splash displays immediately
 
+    window = MainWindow(splash)
+    
+    # Set a timer to wait for 2 seconds before showing the main window
+    QTimer.singleShot(2000, lambda: (window.show(), splash.finish(window)))
+
+    ################################
+    # Set the geometry of the window
     # Get the screen dimensions
     screen_rect = app.primaryScreen().availableGeometry()
-
     # Calculate the dimensions for the window (50% of screen dimensions)
     window_width = screen_rect.width() * 0.5
     window_height = screen_rect.height() * 0.75
-
     # Calculate the position for the window to be centered
     window_x = (screen_rect.width() - window_width) / 2
     window_y = (screen_rect.height() - window_height) / 2
-
-    # Set the geometry of the window
     window.setGeometry(int(window_x), int(window_y), int(window_width), int(window_height))
-
+    ####################
     window.show()
     icon_path = "icons/main_icon.png"
     app_icon = QIcon(icon_path)

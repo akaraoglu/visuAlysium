@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLa
 
 from PyQt6.QtGui import QPainter, QPen, QColor, QLinearGradient, QBrush
 
-from ImageViewer import ImageViewer
-from WindowImageViewerAbstract import ImageViewerWindowAbstract
+from src.ImageViewer import ImageViewer
+from src.WindowImageViewerAbstract import ImageViewerWindowAbstract
 
 from scipy.interpolate import CubicSpline, interp1d
 
@@ -61,7 +61,6 @@ class CurveWidget(QWidget):
         for i in range(1, 7):  # Skip the first line for the same reason
             y = np.int32(self.margin + i * grid_spacing_y)
             painter.drawLine(self.margin, y, self.width - self.margin, y)
-
 
     def draw_points(self, painter):
         # Draw control points

@@ -1,4 +1,4 @@
-from WindowSliderAbstract import ImageEditingsWindow
+from src.WindowSliderAbstract import ImageEditingsWindow
 
 class WindowColors(ImageEditingsWindow):
     slider_list = [ "Temperature",

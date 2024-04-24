@@ -11,8 +11,8 @@ from PyQt6.QtCore import pyqtSlot,pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, 
 from PyQt6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QSpacerItem, QSizePolicy, QVBoxLayout,QHBoxLayout,QComboBox, QPushButton, QGraphicsRectItem, QFileDialog, QMenu, QGraphicsProxyWidget, QRubberBand, QLabel, QWidget
 from PyQt6.QtGui import QPixmap, QCursor, QAction, QPen, QImage, QPainterPath, QTransform, QColor, QFont, QBrush
 
-from WidgetUtils import HoverButton
-import ImageProcessingAlgorithms
+from src.WidgetUtils import HoverButton
+import src.ImageProcessingAlgorithms as ImageProcessingAlgorithms
 
 
 class CustomInfoPanel(QWidget):

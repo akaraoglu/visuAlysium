@@ -1,4 +1,4 @@
-from WindowSliderAbstract import ImageEditingsWindow
+from src.WindowSliderAbstract import ImageEditingsWindow
 
 class WindowLighting(ImageEditingsWindow):
 

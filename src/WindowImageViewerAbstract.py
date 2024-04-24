@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QLabel, QSizePolicy, QPushButton, QSpacerItem,  QGridLayout, QSlider, QApplication
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QPixmap
-from ImageViewer import ImageViewer
+from src.ImageViewer import ImageViewer
 
 class ImageViewerWindowAbstract(QWidget):
     editing_confirmed = pyqtSignal(QPixmap, str)

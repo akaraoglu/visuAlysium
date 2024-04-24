@@ -1,10 +1,10 @@
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QLabel, QSizePolicy, QPushButton, QSpacerItem,  QGridLayout, QSlider, QApplication
 from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QPixmap
-from ImageViewer import ImageViewer
+from src.ImageViewer import ImageViewer
 
-from WidgetUtils import DoubleClickSlider
-from WindowImageViewerAbstract import ImageViewerWindowAbstract
+from src.WidgetUtils import DoubleClickSlider
+from src.WindowImageViewerAbstract import ImageViewerWindowAbstract
 
 class SliderLayout(QHBoxLayout):
 

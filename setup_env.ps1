@@ -1,4 +1,4 @@
-$envPath = ".\env"
+$envPath = ".\env-visualysium"
 if (-Not (Test-Path $envPath)) {
     python -m venv $envPath
 }

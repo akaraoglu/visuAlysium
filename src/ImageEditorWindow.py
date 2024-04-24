@@ -1,13 +1,13 @@
 from PyQt6.QtWidgets import QApplication, QGridLayout, QLabel, QListWidget, QListWidgetItem, QWidget, QSizePolicy, QVBoxLayout, QMenu
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize
-from ImageViewer import ImageViewer
-from WidgetUtils import HoverButton
-from WindowCropping import WindowCropping
+from src.ImageViewer import ImageViewer
+from src.WidgetUtils import HoverButton
+from src.WindowCropping import WindowCropping
 
-from WindowLighting import WindowLighting
-from WindowColors import WindowColors
-from WindowCurveAdjustement import WindowCurveAdjustement
+from src.WindowLighting import WindowLighting
+from src.WindowColors import WindowColors
+from src.WindowCurveAdjustement import WindowCurveAdjustement
 
 class ImageEditor_ButtonLayout(QWidget):
     

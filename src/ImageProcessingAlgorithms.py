@@ -42,8 +42,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 supportedFormats = QImageReader.supportedImageFormats()
-text_filter = "Images ({})".format(" ".join(["*.{}".format(fo.data().decode()) for fo in supportedFormats]))
-print(text_filter)
+# text_filter = "Images ({})".format(" ".join(["*.{}".format(fo.data().decode()) for fo in supportedFormats]))
 
 raw_extensions = [
     '*.cr2', '*.cr3', '*.crw',  # Canon
@@ -485,8 +484,6 @@ def plot_to_qimage(fig):
     qimage = QImage(buf, width, height, QImage.Format.Format_RGBA8888)
     return qimage
 
-
-
 rawpy_params = rawpy.Params(
     demosaic_algorithm=None, 
     half_size=False, 
@@ -546,7 +543,6 @@ def load_image_to_qimage(image_path):
 
     return image
 
-
 def apply_lut_global(image, lut, channel):
     channel_list = ["Luminance", "Red", "Green", "Blue"]
     
@@ -568,8 +564,6 @@ def apply_lut_global(image, lut, channel):
         elif channel == "Blue":
             channel_blue = cv2.LUT(channel_blue, lut)  # Blue channel is index 0
         return cv2.merge((channel_red, channel_green, channel_blue))
-
-
 
 
 def apply_lut_local(image, lut_1, lut_2, channels, mask):
