@@ -35,6 +35,8 @@ import os
 import sys
 import cv2
 import numpy as np
+import OpenEXR
+import Imath
 import rawpy
 from PyQt6.QtGui import QImage, QImageReader
 from numpy.lib.stride_tricks import as_strided
@@ -67,7 +69,9 @@ standard_extensions = [
     '*.svgz', '*.wbmp', '*.xbm', '*.xpm'  # New extensions added
 ]
 
-supported_extensions = raw_extensions + standard_extensions
+exr_extensions = ['*.exr', '*.EXR']
+
+supported_extensions = raw_extensions + standard_extensions #+ exr_extensions
 
 kelvin_list = [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900,
             2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900,
@@ -513,10 +517,37 @@ rawpy_params = rawpy.Params(
     chromatic_aberration=None, 
     bad_pixels_path=None)
 
+def exr_to_numpy(exr_file):
+    # Open the EXR file
+    exr = OpenEXR.InputFile(exr_file)
+
+    # Get the header to retrieve the size of the image
+    header = exr.header()
+    dw = header['dataWindow']
+    width, height = dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1
+
+    # Define the data type of the pixels
+    pt = Imath.PixelType(Imath.PixelType.FLOAT)
+
+    # Read the color channels (R, G, B)
+    redstr = exr.channel('R', pt)
+    greenstr = exr.channel('G', pt)
+    bluestr = exr.channel('B', pt)
+
+    # Convert the channel strings to numpy arrays
+    red = np.frombuffer(redstr, dtype=np.float32).reshape(height, width)
+    green = np.frombuffer(greenstr, dtype=np.float32).reshape(height, width)
+    blue = np.frombuffer(bluestr, dtype=np.float32).reshape(height, width)
+
+    # Combine the channels into a single numpy array
+    img = np.stack([red, green, blue], axis=-1)
+
+    return img
+
 def load_image_to_qimage(image_path):
 
     # Check if the file is a RAW file by its extension
-    if any(image_path.lower().endswith(ext) for ext in raw_extensions):
+    if any(image_path.lower().endswith(ext[1:]) for ext in raw_extensions):
         try:
             # Handle RAW files
             with rawpy.imread(image_path) as raw:
@@ -529,6 +560,17 @@ def load_image_to_qimage(image_path):
         except Exception as e:
             print(f"Failed to load RAW image: {e}")
             return None
+    # elif any(image_path.lower().endswith(ext[1:]) for ext in exr_extensions):
+    #     try:
+    #         # Handle EXR image formats
+    #         rgb_image = exr_to_numpy(image_path)
+    #         rgb_image = np.int32((rgb_image / (2**16-1)) * 255)
+    #         height, width, colors = rgb_image.shape
+    #         bytes_per_line = 3 * width
+    #         image = QImage(rgb_image.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+    #     except Exception as e:
+    #         print(f"Failed to load image: {e}")
+    #         return None
     else:
         try:
             # Handle standard image formats
