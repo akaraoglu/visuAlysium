@@ -176,7 +176,7 @@ class ImageViewer(QGraphicsView):
 
         self.image_path = ""
         self.info_display_visible = False
-        self.info_widget = CustomInfoPanel(self)
+        self.info_widget = CustomInfoPanel()
         self.info_label_proxy = QGraphicsProxyWidget()
         self.info_label_proxy.setWidget(self.info_widget)
         self.info_widget.setGeometry(10, 10, 400, 400)
@@ -237,7 +237,7 @@ class ImageViewer(QGraphicsView):
 
 
     def create_new_button(self, icon, connect_to):
-        new_button = HoverButton(self, text="", icon=icon, button_size=self.button_size, icon_size=self.icon_size)
+        new_button = HoverButton(parent=None, text="", icon=icon, button_size=self.button_size, icon_size=self.icon_size)
         new_button.clicked.connect(connect_to)  # Connect button click to originalSize method
 
         # Add the buttons to the scene
