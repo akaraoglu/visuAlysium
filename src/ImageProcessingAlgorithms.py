@@ -71,7 +71,7 @@ standard_extensions = [
 
 exr_extensions = ['*.exr', '*.EXR']
 
-supported_extensions = raw_extensions + standard_extensions #+ exr_extensions
+supported_extensions = raw_extensions + standard_extensions + exr_extensions
 
 kelvin_list = [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900,
             2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900,
@@ -517,7 +517,7 @@ rawpy_params = rawpy.Params(
     chromatic_aberration=None, 
     bad_pixels_path=None)
 
-def exr_to_numpy(exr_file):
+def exr_to_numpy(exr_file, clip=False):
     # Open the EXR file
     exr = OpenEXR.InputFile(exr_file)
 
@@ -538,6 +538,11 @@ def exr_to_numpy(exr_file):
     red = np.frombuffer(redstr, dtype=np.float32).reshape(height, width)
     green = np.frombuffer(greenstr, dtype=np.float32).reshape(height, width)
     blue = np.frombuffer(bluestr, dtype=np.float32).reshape(height, width)
+
+    if clip: 
+        red = np.clip(red, 0, 1)
+        green = np.clip(green, 0, 1)
+        blue = np.clip(blue, 0, 1)
 
     # Combine the channels into a single numpy array
     img = np.stack([red, green, blue], axis=-1)
@@ -560,17 +565,18 @@ def load_image_to_qimage(image_path):
         except Exception as e:
             print(f"Failed to load RAW image: {e}")
             return None
-    # elif any(image_path.lower().endswith(ext[1:]) for ext in exr_extensions):
-    #     try:
-    #         # Handle EXR image formats
-    #         rgb_image = exr_to_numpy(image_path)
-    #         rgb_image = np.int32((rgb_image / (2**16-1)) * 255)
-    #         height, width, colors = rgb_image.shape
-    #         bytes_per_line = 3 * width
-    #         image = QImage(rgb_image.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
-    #     except Exception as e:
-    #         print(f"Failed to load image: {e}")
-    #         return None
+    elif any(image_path.lower().endswith(ext[1:]) for ext in exr_extensions):
+        try:
+            # Handle EXR image formats
+            rgb_image = exr_to_numpy(image_path, clip=True)
+            # Values are clipped between 0..1 to deal with overexposed areas. Multiply so we get channel values of 0..255 to show the RGB image: 
+            rgb_image = np.uint8(rgb_image * 255)
+            height, width, colors = rgb_image.shape
+            bytes_per_line = 3 * width
+            image = QImage(rgb_image.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+        except Exception as e:
+            print(f"Failed to load image: {e}")
+            return None
     else:
         try:
             # Handle standard image formats
