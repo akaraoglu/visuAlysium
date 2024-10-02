@@ -394,6 +394,7 @@ class ImageViewer(QGraphicsView):
                 self.scene.removeItem(self.pixmap_item)
             
             self.pixmap_item = QGraphicsPixmapItem(self.current_pixmap)
+            self.pixmap_item.setZValue(-1)
             self.setSceneRect(QRectF(self.current_pixmap.rect()))  # Set scene size to image size
             self.scene.addItem(self.pixmap_item)            
             # self.zoom_in()
