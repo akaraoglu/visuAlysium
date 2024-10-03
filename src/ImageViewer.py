@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 
-from PyQt6.QtGui import QWheelEvent
+from PyQt6.QtGui import QWheelEvent, QPaintEvent
 from PyQt6.QtCore import pyqtSlot,pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, QPointF, QSizeF
 from PyQt6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QSpacerItem, QSizePolicy, QVBoxLayout,QHBoxLayout,QComboBox, QPushButton, QGraphicsRectItem, QFileDialog, QMenu, QGraphicsProxyWidget, QRubberBand, QLabel, QWidget
 from PyQt6.QtGui import QPixmap, QCursor, QAction, QPen, QImage, QPainterPath, QTransform, QColor, QFont, QBrush
@@ -127,7 +127,6 @@ class ImageViewer(QGraphicsView):
 
     def __init__(self):
         super().__init__()
-
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
         self.zoomX = 1              # zoom factor w.r.t size of qlabel_image
@@ -142,6 +141,7 @@ class ImageViewer(QGraphicsView):
         self._pixelPosition = QPoint()
         self._scenePosition = QPointF()
         self._crop_mode = False
+        self.__crop_active = False
 
         self.button_size = QSize(60,60)  # Button size (width and height)
         self.icon_size = QSize(40,40)  # Icon size within the button
@@ -154,14 +154,12 @@ class ImageViewer(QGraphicsView):
         self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
          
         # # Add buttons
-        self.button_list = []
-
         button_fit_screen = self.create_new_button(icon="icons/fullscreen.png", connect_to=self.show_image_fit_to_screen)
         button_original_size = self.create_new_button(icon="icons/original_size.png", connect_to=self.show_image_in_original_size)
         button_zoom_in = self.create_new_button(icon="icons/zoom-in.png", connect_to=self.zoom_in)
         button_zoom_out = self.create_new_button(icon="icons/zoom-out.png", connect_to=self.zoom_out)
 
-        self.button_list = [button_fit_screen, button_original_size, button_zoom_in, button_zoom_out]
+        self.__button_proxy_list = [button_fit_screen, button_original_size, button_zoom_in, button_zoom_out]
 
         self.createContextMenu()
         self.aspectRatioMode = Qt.AspectRatioMode.KeepAspectRatio
@@ -236,15 +234,16 @@ class ImageViewer(QGraphicsView):
         self.scale(factor, factor)  # Apply the new zoom factor
 
 
-    def create_new_button(self, icon, connect_to):
+    def create_new_button(self, icon, connect_to) -> QGraphicsProxyWidget:
         new_button = HoverButton(parent=None, text="", icon=icon, button_size=self.button_size, icon_size=self.icon_size)
         new_button.clicked.connect(connect_to)  # Connect button click to originalSize method
 
         # Add the buttons to the scene
-        self.new_button_proxy = QGraphicsProxyWidget()
-        self.new_button_proxy.setWidget(new_button)
-        self.scene.addItem(self.new_button_proxy)
-        return new_button
+        new_button_proxy = QGraphicsProxyWidget()
+        new_button_proxy.setWidget(new_button)
+        
+        self.scene.addItem(new_button_proxy)
+        return new_button_proxy
     
     def channel_option_selected(self, option):
         print(f"Selected curve option: {option}")
@@ -336,19 +335,26 @@ class ImageViewer(QGraphicsView):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        number_of_buttons = len(self.button_list)
-        bottom_center = int(self.width() / 2)
-        dis_bet_buttons = 5
+        self.__reposition_buttons()
+
+    def __reposition_buttons(self): 
+        """Repositions the buttons to the view"""
+        number_of_buttons = len(self.__button_proxy_list)
+        bottom_center = int(self.viewport().width() / 2)
+        dis_bet_buttons = 1
         height_needed = self.button_size.height() + 15 # distance from lower boundry
         width_needed  = (self.button_size.width()  * number_of_buttons) + (dis_bet_buttons*(number_of_buttons-1)) #  distance between the buttons
+        
+        y = self.viewport().height() - height_needed
 
-        y = self.height() - height_needed
-
-        for i,button in enumerate(self.button_list):
+        for i,button_proxy in enumerate(self.__button_proxy_list):
             x = bottom_center - int(width_needed/2 - (self.button_size.width()*i) - (dis_bet_buttons*i))
             # Position the buttons at the bottom center
-            button.setGeometry(x, y, self.button_size.width(), self.button_size.height())
-    
+            scene_point = self.mapToScene(int(x), int(y))
+            button_proxy: QGraphicsProxyWidget
+
+            button_proxy.setPos(scene_point)
+
     def show_image_initial_size(self):
         pixmapSize = self.pixmap_item.sceneBoundingRect().size()
         viewSize = self.size()
@@ -397,7 +403,6 @@ class ImageViewer(QGraphicsView):
             self.pixmap_item.setZValue(-1)
             self.setSceneRect(QRectF(self.current_pixmap.rect()))  # Set scene size to image size
             self.scene.addItem(self.pixmap_item)            
-            # self.zoom_in()
 
         # show the rectangle over the image.
         if self.cropRect is not None:
@@ -470,12 +475,15 @@ class ImageViewer(QGraphicsView):
 
     def zoom_out(self):
         self.zoom(0.9)
+        self.__reposition_buttons()
         
     def zoom_in(self):
         self.zoom(1.1)
+        self.__reposition_buttons()
         
     def zoom(self, factor):
             self.scale(factor, factor)
+            self.__reposition_buttons()
     
     def updateViewer(self, zoomRect):
         if not self.hasImage():
@@ -531,10 +539,9 @@ class ImageViewer(QGraphicsView):
                 self._isPanning = True
                 self._startPosPanning = event.pos()
             elif (event.button() == Qt.MouseButton.LeftButton):
+                self.__crop_active = True
                 self.rect_start_point = self.mapToScene(event.pos())
-                # if self.scene.itemAt(1) is not self.cropRect :
                 self.scene.addItem(self.cropRect)
-
                 self.cropRect.setRect(QRectF(self.rect_start_point, self.rect_start_point))
         else:
             # Start dragging a region zoom box?
@@ -600,7 +607,7 @@ class ImageViewer(QGraphicsView):
             # Update the start position for the next event
             self._startPosPanning = event.pos()
         
-        elif self._crop_mode:
+        elif self._crop_mode and self.__crop_active:
             current_point = self.mapToScene(event.pos())
             
             # Ensure current_point does not go beyond the image's boundaries
@@ -610,10 +617,11 @@ class ImageViewer(QGraphicsView):
             current_point.setX(max_x)
             current_point.setY(max_y)
             
-            rect = QRectF(self.rect_start_point, current_point).normalized()
+            if self.rect_start_point and current_point: 
+                rect = QRectF(self.rect_start_point, current_point).normalized()
             
-            self.cropRect.setRect(rect)
-            self.update_rect()
+                self.cropRect.setRect(rect)
+                self.update_rect()
 
         QGraphicsView.mouseMoveEvent(self, event)
 
@@ -622,10 +630,11 @@ class ImageViewer(QGraphicsView):
             if self._isPanning:
                 self.setDragMode(QGraphicsView.DragMode.NoDrag)
                 self._isPanning = False
-            elif event.button() == Qt.MouseButton.LeftButton:
+            elif event.button() == Qt.MouseButton.LeftButton and self.__crop_active:
                 # rect = self.cropRect.rect()
                 # Emit updating the crop rectangle
                 self.crop_rectangle_changed.emit(self.get_current_crop_rect())
+                self.__crop_active = False
         else:
             if (self.regionZoomKeyPressed == True) and (event.button() == Qt.MouseButton.LeftButton):
                 zoomRect = self.scene.selectionArea().boundingRect().intersected(self.sceneRect())
