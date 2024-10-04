@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import  QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QLineEdit, QApplication
 from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QPixmap, QIntValidator, QPalette
-
+import typing
 from src.WidgetUtils import HoverButton
 from src.WindowImageViewerAbstract import ImageViewerWindowAbstract
 
@@ -47,7 +47,7 @@ class CropWindow_ButtonLayout(QHBoxLayout):
         self.addLayout(self.crop_layout)
         self.addItem(spacer)
 
-    def add_crop_edit_line(self,placeholder,signal_function):
+    def add_crop_edit_line(self,placeholder:str,signal_function:typing.Callable[[], None]) -> QLineEdit:
         """
         Creates, configures, and returns a QLineEdit widget for crop dimension input.
         """
@@ -106,7 +106,7 @@ class WindowCropping(ImageViewerWindowAbstract):
         self.setWindowTitle("Crop Window")
         # Connect new signal to a method
         self.editing_options_layout.crop_rectangle_changed.connect(self.update_image_viewer_crop)
-        self.image_viewer.crop_rectangle_changed.connect(self.update_crop_info_in_button_layer)
+        self._image_viewer.crop_rectangle_changed.connect(self.update_crop_info_in_button_layer)
 
     def create_editing_options_layout(self):
         temp_layout = CropWindow_ButtonLayout()
@@ -127,45 +127,45 @@ class WindowCropping(ImageViewerWindowAbstract):
     def update_image_viewer_crop(self, x, y, width, height):
         # Update the crop rectangle of the image viewer
         print("Update the crop rectangle of the image viewer")
-        self.image_viewer.set_crop_rectangle(x, y, width, height)
+        self._image_viewer.set_crop_rectangle(x, y, width, height)
 
     def set_image(self, pixmap_image):
         self.pixmap_image_orig = pixmap_image
-        self.image_viewer.set_crop_mode(True)
-        self.image_viewer.show_new_pixmap(pixmap_image)
-        self.image_viewer.reset_rect()
+        self._image_viewer.set_crop_mode(True)
+        self._image_viewer.show_new_pixmap(pixmap_image)
+        self._image_viewer.reset_rect()
 
     def flip_vertical(self):
-        if self.image_viewer.get_current_pixmap() is not None:
+        if self._image_viewer.get_current_pixmap() is not None:
             # Assuming ImageViewer has a method to flip the image vertically
-            self.image_viewer.flip_vertical()
+            self._image_viewer.flip_vertical()
             print("Flip Vertical", "The image has been flipped vertically.")
 
     def flip_horizontal(self):
-        if self.image_viewer.get_current_pixmap() is not None:
+        if self._image_viewer.get_current_pixmap() is not None:
             # Assuming ImageViewer has a method to flip the image horizontally
-            self.image_viewer.flip_horizontal()
+            self._image_viewer.flip_horizontal()
             print( "Flip Horizontal", "The image has been flipped horizontally.")
 
     def rotate_right(self):
-        if self.image_viewer.get_current_pixmap() is not None:
+        if self._image_viewer.get_current_pixmap() is not None:
             # Assuming ImageViewer has a method to rotate the image 90 degrees to the right
-            self.image_viewer.rotate_right()
+            self._image_viewer.rotate_right()
             print( "Rotate Right", "The image has been rotated 90 degrees to the right.")
 
     def rotate_left(self):
-        if self.image_viewer.get_current_pixmap() is not None:
+        if self._image_viewer.get_current_pixmap() is not None:
             # Assuming ImageViewer has a method to rotate the image 90 degrees to the left
-            self.image_viewer.rotate_left()
+            self._image_viewer.rotate_left()
             print("Rotate Left", "The image has been rotated 90 degrees to the left.")
 
     def ok_pressed(self):
         # Here you would typically confirm the changes and possibly close the window or reset it for another operation
         print( "OK", "Changes have been applied.")
-        # self.image_viewer.get_current_crop_rect()
-        self.image_viewer.crop_image(self.image_viewer.get_current_crop_rect())
+        # self._image_viewer.get_current_crop_rect()
+        self._image_viewer.crop_image(self._image_viewer.get_current_crop_rect())
 
-        self.editing_confirmed.emit(self.image_viewer.get_current_pixmap(), "Crop and Rotate")
+        self.editing_confirmed.emit(self._image_viewer.get_current_pixmap(), "Crop and Rotate")
         self.close() #to close the window
     
     # Define placeholder functions for slider adjustments

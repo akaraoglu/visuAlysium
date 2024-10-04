@@ -12,21 +12,21 @@ class ImageViewerWindowAbstract(QWidget):
         # self.setGeometry(100, 100, 800, 600)
 
         # Assuming ImageViewer and LightingWindow_ButtonLayout are defined elsewhere
-        self.image_viewer = ImageViewer()
-        self.pixmap_image_orig = None
+        self._image_viewer = ImageViewer()
+        self.__pixmap_image_orig = None
 
         # Abstract method to setup editing options
         self.editing_options_layout = self.create_editing_options_layout()
 
 
-        self.confirmation_layout = QHBoxLayout()
-        self.setup_generic_buttons(self.confirmation_layout)
+        self.__confirmation_layout = QHBoxLayout()
+        self.setup_generic_buttons(self.__confirmation_layout)
 
         # Create the main layout for the widget
         main_layout = QVBoxLayout(self)
-        main_layout.addWidget(self.image_viewer)
+        main_layout.addWidget(self._image_viewer)
         main_layout.addLayout(self.editing_options_layout)
-        main_layout.addLayout(self.confirmation_layout)
+        main_layout.addLayout(self.__confirmation_layout)
 
         # Center and size the window
         self.center_and_size_window()
@@ -77,28 +77,28 @@ class ImageViewerWindowAbstract(QWidget):
 
     def set_image(self, pixmap_image):
         self.initialize_values()
-        self.pixmap_image_orig = pixmap_image
+        self.__pixmap_image_orig = pixmap_image
         new_width = 1024
         new_height = 1024
         scaled_pixmap = pixmap_image.scaled(new_width, new_height, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        self.image_viewer.show_new_pixmap(scaled_pixmap)
+        self._image_viewer.show_new_pixmap(scaled_pixmap)
     
     def initialize_values(self):
         print("Fill the function with necessary initialization values")
 
     def hdtsoi_pressed(self):
         print( "HDtSOI", "Showing original image.")
-        self.image_viewer.show_pixmap(self.image_viewer.get_original_pixmap())
+        self._image_viewer.show_pixmap(self._image_viewer.get_original_pixmap())
 
     def hdtsoi_released(self):
         print( "HDtSOI", "Showing edited image.")
-        self.image_viewer.show_pixmap(self.image_viewer.get_previous_pixmap())
+        self._image_viewer.show_pixmap(self._image_viewer.get_previous_pixmap())
 
     def ok_pressed(self):
         print( "OK", "Changes have been applied.")
-        self.image_viewer.show_new_pixmap(self.pixmap_image_orig)
+        self._image_viewer.show_new_pixmap(self.__pixmap_image_orig)
         self.update_image()
-        self.editing_confirmed.emit(self.image_viewer.get_current_pixmap(), "Lighting Adjustment")
+        self.editing_confirmed.emit(self._image_viewer.get_current_pixmap(), "Lighting Adjustment")
         self.close() #to close the window
 
     def cancel_pressed(self):
@@ -114,8 +114,8 @@ class ImageViewerWindowAbstract(QWidget):
         print("Reset placeholder.")
 
     def histogram_pressed(self):
-        self.image_viewer.toggle_info_display()
+        self._image_viewer.toggle_info_display()
     
     def keyPressEvent(self, event):
-        self.image_viewer.keyPressEvent(event)
+        self._image_viewer.keyPressEvent(event)
         super().keyPressEvent(event)
