@@ -6,224 +6,112 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 
-from PyQt6.QtGui import QWheelEvent
+from PyQt6.QtGui import QWheelEvent, QPaintEvent
 from PyQt6.QtCore import pyqtSlot,pyqtSignal, Qt, QSize, QPoint, QRect, QRectF, QPointF, QSizeF
 from PyQt6.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QSpacerItem, QSizePolicy, QVBoxLayout,QHBoxLayout,QComboBox, QPushButton, QGraphicsRectItem, QFileDialog, QMenu, QGraphicsProxyWidget, QRubberBand, QLabel, QWidget
 from PyQt6.QtGui import QPixmap, QCursor, QAction, QPen, QImage, QPainterPath, QTransform, QColor, QFont, QBrush
 
 from src.WidgetUtils import HoverButton
 import src.ImageProcessingAlgorithms as ImageProcessingAlgorithms
+from src.util.CustomInfoPanel import CustomInfoPanel
 
-
-class CustomInfoPanel(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)  # Pass the parent to the superclass initializer
-        self.setup_ui()
-        
-        # Add a border to the widget
-        # self.setStyleSheet("QWidget { border: 1px solid black; }")
-        p = self.palette()
-        p.setColor(self.backgroundRole(), Qt.GlobalColor.red)
-        self.setPalette(p)
-        # self.setStyleSheet("background-color: rgba(125, 125, 125, 0.3); border: 1px ; border-radius: 10px; color: white;")
-        
-    def setup_ui(self):
-        # Use QVBoxLayout to layout the labels and histogram vertically
-        layout = QVBoxLayout()
-        
-        # Set the layout for the widget
-        self.setLayout(layout)
-
-        # Create a consistent font size for all labels
-        label_font = QFont("Arial", 10)
-
-        # Helper function to create a label with right alignment
-        def create_label(text):
-            label = QLabel(text)
-
-            label.setFont(label_font)
-            label.setFixedSize(QSize(100,20))
-            label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            return label
-
-        labels_and_info_layout = QHBoxLayout()
-
-        labels_layout = QVBoxLayout()
-        # Add the labels for file attributes
-        file_name_label = create_label (" File Name: ")
-        location_label = create_label  ("  Location: ")
-        type_label = create_label      ("      Type: ")
-        size_label = create_label      ("      Size: ")
-        date_time_label = create_label (" Date Time: ")
-        attributes_label = create_label("Resolution: ")
-        dpi_label = create_label       (" Bit depth: ")
-        # Add labels to the layout
-        labels = [
-            file_name_label, location_label, type_label,
-            size_label, date_time_label, attributes_label,
-            dpi_label
-        ]
-        for label in labels:
-            labels_layout.addWidget(label)
-
-        info_layout = QVBoxLayout()
-        # Add the labels for file attributes
-        info_file_name_label = create_label (" ")
-        info_location_label = create_label  (" ")
-        info_type_label = create_label      (" ")
-        info_size_label = create_label      (" ")
-        info_date_time_label = create_label (" ")
-        info_attributes_label = create_label(" ")
-        info_dpi_label = create_label       (" ")
-        # Add labels to the layout
-        self.info_labels = [
-            info_file_name_label, info_location_label, info_type_label,
-            info_size_label, info_date_time_label, info_attributes_label,
-            info_dpi_label
-        ]
-        for label in self.info_labels:
-            label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-            label.setFixedSize(QSize(400,20))
-            info_layout.addWidget(label)
-
-        labels_and_info_layout.addLayout(labels_layout)
-        labels_and_info_layout.addLayout(info_layout)
-        layout.addLayout(labels_and_info_layout)
-
-        # Placeholder for histogram
-        self.histogram_display = QLabel()
-        layout.addWidget(self.histogram_display)
-
-            
-        # Combo box and button for histogram controls
-        histogram_controls_layout = QHBoxLayout()
-
-        # Add a spacer item to push the combo box to the right
-        spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        
-
-        # Combo box for selecting the channel
-        self.channel_combo_box = QComboBox()
-        self.channel_combo_box.setMinimumSize(100, 10)
-
-        
-        self.channel_combo_box.addItems(["Luminance", "Red", "Green", "Blue"])
-        histogram_controls_layout.addWidget(self.channel_combo_box)
-        histogram_controls_layout.addItem(spacer)
-
-        layout.addLayout(histogram_controls_layout)
-
-    def update_info(self, info_dict):
-        for i,info in enumerate(info_dict):
-            print(info)
-            self.info_labels[i].setText(info)
-
-    def update_histogram(self, pixmap):
-        scaled_pixmap = pixmap.scaled(self.histogram_display.width(), self.histogram_display.height())
-        self.histogram_display.setPixmap(scaled_pixmap)
 
 class ImageViewer(QGraphicsView):
     crop_rectangle_changed = pyqtSignal(QRectF)
 
+    BUTTON_SIZE = QSize(60, 60)
+    ICON_SIZE = QSize(40, 40)
+
     def __init__(self):
         super().__init__()
-
-        self.scene = QGraphicsScene()
-        self.setScene(self.scene)
-        self.zoomX = 1              # zoom factor w.r.t size of qlabel_image
-        self.position = [0, 0]      # position of top left corner of qimage_label w.r.t. qimage_scaled
+        self.__scene = QGraphicsScene()
+        self.setScene(self.__scene)
         
         # Flags for active zooming/panning.
-        self._isZooming = False
-        self._isPanning = False        # to enable or disable pan
-        self.pixmap_item = None
+        self.__is_panning = False        # to enable or disable pan
+        self.__pixmap_item = None
         
         # Store temporary position in screen pixels or scene units.
-        self._pixelPosition = QPoint()
-        self._scenePosition = QPointF()
-        self._crop_mode = False
+        self.__pixel_position = QPoint()
+        self.__scene_position = QPointF()
+        self.__crop_mode = False
+        self.__crop_active = False
 
-        self.button_size = QSize(60,60)  # Button size (width and height)
-        self.icon_size = QSize(40,40)  # Icon size within the button
-
-        self.current_pixmap = None
-        self.previous_pixmap = None
-        self.original_pixmap = None
-
-        self.cropRect = QGraphicsRectItem()
-        self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
+        self.__current_pixmap = None
+        self.__previous_pixmap = None
+        self.__original_pixmap = None
+        
+        self.__crop_rect = QGraphicsRectItem()
+        self.__crop_rect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
          
         # # Add buttons
-        self.button_list = []
-
         button_fit_screen = self.create_new_button(icon="icons/fullscreen.png", connect_to=self.show_image_fit_to_screen)
         button_original_size = self.create_new_button(icon="icons/original_size.png", connect_to=self.show_image_in_original_size)
         button_zoom_in = self.create_new_button(icon="icons/zoom-in.png", connect_to=self.zoom_in)
         button_zoom_out = self.create_new_button(icon="icons/zoom-out.png", connect_to=self.zoom_out)
 
-        self.button_list = [button_fit_screen, button_original_size, button_zoom_in, button_zoom_out]
+        self.__button_proxy_list = [button_fit_screen, button_original_size, button_zoom_in, button_zoom_out]
 
         self.createContextMenu()
-        self.aspectRatioMode = Qt.AspectRatioMode.KeepAspectRatio
-        self.regionZoomKey = Qt.Key.Key_Control  # Drag a zoom box.
-        self.regionZoomKeyPressed = False
+        self.__aspect_ratio_mode = Qt.AspectRatioMode.KeepAspectRatio
+        self.__region_zoom_key = Qt.Key.Key_Control  # Drag a zoom box.
+        self.__region_zoom_key_pressed = False
 
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setInteractive(True)
 
-        self.rubber_band = None
-        self.rect_start_point = None
+        self.__rect_start_point = None
 
-        self.image_path = ""
-        self.info_display_visible = False
-        self.info_widget = CustomInfoPanel()
-        self.info_label_proxy = QGraphicsProxyWidget()
-        self.info_label_proxy.setWidget(self.info_widget)
-        self.info_widget.setGeometry(10, 10, 400, 400)
-        self.scene.addItem(self.info_label_proxy)
+        self.__image_path = ""
+        self.__info_display_visible = False
+        self.__info_widget = CustomInfoPanel()
+        self.__info_label_proxy = QGraphicsProxyWidget()
+        self.__info_label_proxy.setWidget(self.__info_widget)
+        self.__info_widget.setGeometry(10, 10, 400, 400)
+        self.__scene.addItem(self.__info_label_proxy)
 
         self.init_info_display()
         
-        self.curve_option = "Luminance" #default
-        self.info_widget.channel_combo_box.currentTextChanged.connect(self.channel_option_selected)
+        self.__curve_option = "Luminance" #default
+        self.__info_widget.channel_combo_box.currentTextChanged.connect(self.channel_option_selected)
         
         # Set the focus policy to accept focus by tabbing and clicking
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
     def init_info_display(self):
-        if self.info_display_visible == True:
-            # self.info_label_proxy.setVisible(True)
-            self.info_widget.setVisible(True)
+        if self.__info_display_visible == True:
+            # self.__info_label_proxy.setVisible(True)
+            self.__info_widget.setVisible(True)
         else:
-            # self.info_label_proxy.setVisible(False)
-            self.info_widget.setVisible(False)
+            # self.__info_label_proxy.setVisible(False)
+            self.__info_widget.setVisible(False)
 
     def toggle_info_display(self):
         # self.show_pixmap(self.get_current_pixmap())
-        if self.info_display_visible == False:
-            self.info_display_visible = True
+        if self.__info_display_visible == False:
+            self.__info_display_visible = True
         else:
-            self.info_display_visible = False
+            self.__info_display_visible = False
         self.init_info_display()
         self.update_image_info()
         
-        print("Showing histogram: ", self.info_display_visible)
+        print("Showing histogram: ", self.__info_display_visible)
 
     def createContextMenu(self):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
 
-        self.contextMenu = QMenu(self)
-        self.copyAction = QAction("Copy Image", self)
-        self.copyAction.triggered.connect(self.copyImage)
-        self.pasteAction = QAction("Paste Image", self)
-        self.pasteAction.triggered.connect(self.pasteImage)
-        self.saveAction = QAction("Save As ...", self)
-        self.saveAction.triggered.connect(self.saveImage)
+        self.__context_menu = QMenu(self)
+        self.__copy_action = QAction("Copy Image", self)
+        self.__copy_action.triggered.connect(self.copyImage)
+        self.__paste_action = QAction("Paste Image", self)
+        self.__paste_action.triggered.connect(self.pasteImage)
+        self.__save_action = QAction("Save As ...", self)
+        self.__save_action.triggered.connect(self.saveImage)
 
-        self.contextMenu.addAction(self.copyAction)
-        self.contextMenu.addAction(self.pasteAction)
-        self.contextMenu.addAction(self.saveAction)
+        self.__context_menu.addAction(self.__copy_action)
+        self.__context_menu.addAction(self.__paste_action)
+        self.__context_menu.addAction(self.__save_action)
     
     def toggle_zoom_mode(self):
         if self.transform().m11() == 1.0:  # If the current zoom is 100% (original size)
@@ -236,51 +124,52 @@ class ImageViewer(QGraphicsView):
         self.scale(factor, factor)  # Apply the new zoom factor
 
 
-    def create_new_button(self, icon, connect_to):
-        new_button = HoverButton(parent=None, text="", icon=icon, button_size=self.button_size, icon_size=self.icon_size)
+    def create_new_button(self, icon, connect_to) -> QGraphicsProxyWidget:
+        new_button = HoverButton(parent=None, text="", icon=icon, button_size=self.BUTTON_SIZE, icon_size=self.ICON_SIZE)
         new_button.clicked.connect(connect_to)  # Connect button click to originalSize method
 
         # Add the buttons to the scene
-        self.new_button_proxy = QGraphicsProxyWidget()
-        self.new_button_proxy.setWidget(new_button)
-        self.scene.addItem(self.new_button_proxy)
-        return new_button
+        new_button_proxy = QGraphicsProxyWidget()
+        new_button_proxy.setWidget(new_button)
+        
+        self.__scene.addItem(new_button_proxy)
+        return new_button_proxy
     
     def channel_option_selected(self, option):
         print(f"Selected curve option: {option}")
-        self.curve_option = option
+        self.__curve_option = option
         self.update_image_info()
         # Implement functionality based on selected option
 
     def update_image_info(self):
-        if self.info_display_visible == True:
+        if self.__info_display_visible == True:
             # Update the display with new information
-            if self.current_pixmap:
-                if self.image_path != "":
+            if self.__current_pixmap:
+                if self.__image_path != "":
                     # Getting file properties
-                    file_info = os.stat(self.image_path)
+                    file_info = os.stat(self.__image_path)
                     file_size = file_info.st_size / 1024  # Size in KB
                     modification_time = datetime.fromtimestamp(file_info.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
 
                     # Getting image properties
-                    image = QImage(self.image_path)  # Using QImage to get bit depth
+                    image = QImage(self.__image_path)  # Using QImage to get bit depth
                     bit_depth = image.depth()
 
                     # Preparing info text
                     info_list = [
-                        f"{os.path.basename(self.image_path)}",
-                        f"{os.path.dirname(self.image_path)}",
-                        f"{self.image_path.split('.')[-1].upper()}",
+                        f"{os.path.basename(self.__image_path)}",
+                        f"{os.path.dirname(self.__image_path)}",
+                        f"{self.__image_path.split('.')[-1].upper()}",
                         f"{file_size:.2f} KB",
                         f"{modification_time}",
-                        f"{self.current_pixmap.width()}x{self.current_pixmap.height()}",
+                        f"{self.__current_pixmap.width()}x{self.__current_pixmap.height()}",
                         f"{bit_depth} bits" ]
 
                     # self.info_label.setText(info_text)
-                    self.info_widget.update_info(info_list)
+                    self.__info_widget.update_info(info_list)
 
                 # Calculate histogram for luminance
-                option = self.curve_option
+                option = self.__curve_option
                 image = self.convert_pixmap_to_opencv_image(self.get_current_pixmap())
                 hist = ImageProcessingAlgorithms.calculate_histogram(image, option)
 
@@ -297,29 +186,29 @@ class ImageViewer(QGraphicsView):
                 # Convert to QPixmap and display in QLabel
                 qimage = ImageProcessingAlgorithms.plot_to_qimage(fig)
                 
-                self.info_widget.update_histogram(QPixmap.fromImage(qimage))
+                self.__info_widget.update_histogram(QPixmap.fromImage(qimage))
 
                 # Clear the figure to release memory
                 plt.close(fig)
 
     def set_crop_mode(self, enabled):
-        self._crop_mode = enabled
+        self.__crop_mode = enabled
         self.setCursor(Qt.CursorShape.CrossCursor)
 
     def reset_rect(self):
-        if self.cropRect is not None:
-            self.scene.removeItem(self.cropRect)
-            self.cropRect.setRect(self.pixmap_item.sceneBoundingRect())
+        if self.__crop_rect is not None:
+            self.__scene.removeItem(self.__crop_rect)
+            self.__crop_rect.setRect(self.__pixmap_item.sceneBoundingRect())
             if self.update_rect():
                 self.crop_rectangle_changed.emit(self.get_current_crop_rect())
 
     def showContextMenu(self, pos):
-        self.contextMenu.exec(QCursor.pos())
+        self.__context_menu.exec(QCursor.pos())
 
     def copyImage(self):
-        if self.pixmap_item is not None:
+        if self.__pixmap_item is not None:
             # Copy the pixmap
-            QApplication.clipboard().setPixmap(self.pixmap_item.pixmap())
+            QApplication.clipboard().setPixmap(self.__pixmap_item.pixmap())
 
     def pasteImage(self):
         # Get the pixmap from clipboard if available and add it to the scene
@@ -329,28 +218,35 @@ class ImageViewer(QGraphicsView):
             self.show_pixmap(pixmap)
 
     def saveImage(self):
-        if self.pixmap_item is not None:
+        if self.__pixmap_item is not None:
             filename, _ = QFileDialog.getSaveFileName(self, "Save As", "", "Images (*.png *.jpg *.bmp)")
             if filename:
-                self.pixmap_item.pixmap().save(filename)
+                self.__pixmap_item.pixmap().save(filename)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        number_of_buttons = len(self.button_list)
-        bottom_center = int(self.width() / 2)
-        dis_bet_buttons = 5
-        height_needed = self.button_size.height() + 15 # distance from lower boundry
-        width_needed  = (self.button_size.width()  * number_of_buttons) + (dis_bet_buttons*(number_of_buttons-1)) #  distance between the buttons
+        self.__reposition_buttons()
 
-        y = self.height() - height_needed
+    def __reposition_buttons(self): 
+        """Repositions the buttons to the view"""
+        number_of_buttons = len(self.__button_proxy_list)
+        bottom_center = int(self.viewport().width() / 2)
+        dis_bet_buttons = 1
+        height_needed = self.BUTTON_SIZE.height() + 15 # distance from lower boundry
+        width_needed  = (self.BUTTON_SIZE.width()  * number_of_buttons) + (dis_bet_buttons*(number_of_buttons-1)) #  distance between the buttons
+        
+        y = self.viewport().height() - height_needed
 
-        for i,button in enumerate(self.button_list):
-            x = bottom_center - int(width_needed/2 - (self.button_size.width()*i) - (dis_bet_buttons*i))
+        for i,button_proxy in enumerate(self.__button_proxy_list):
+            x = bottom_center - int(width_needed/2 - (self.BUTTON_SIZE.width()*i) - (dis_bet_buttons*i))
             # Position the buttons at the bottom center
-            button.setGeometry(x, y, self.button_size.width(), self.button_size.height())
-    
+            scene_point = self.mapToScene(int(x), int(y))
+            button_proxy: QGraphicsProxyWidget
+
+            button_proxy.setPos(scene_point)
+
     def show_image_initial_size(self):
-        pixmapSize = self.pixmap_item.sceneBoundingRect().size()
+        pixmapSize = self.__pixmap_item.sceneBoundingRect().size()
         viewSize = self.size()
 
         if (pixmapSize.width() <= viewSize.width()) and (pixmapSize.height() <= viewSize.height()):
@@ -360,17 +256,17 @@ class ImageViewer(QGraphicsView):
 
     def show_image_fit_to_screen(self):
         # Implement fit to screen functionality
-        if self.pixmap_item is not None:
-            self.fitInView(self.pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
+        if self.__pixmap_item is not None:
+            self.fitInView(self.__pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
         print("Fit to screen.")
             
     def show_image_in_original_size(self):
         # Implement original size functionality
-        if self.pixmap_item is not None:
-            original_size = self.pixmap_item.pixmap().size()
+        if self.__pixmap_item is not None:
+            original_size = self.__pixmap_item.pixmap().size()
             if not original_size.isEmpty():
                 self.resetTransform()  # Reset any previous transformation
-                scene_rect = self.pixmap_item.sceneBoundingRect()
+                scene_rect = self.__pixmap_item.sceneBoundingRect()
                 width_ratio = scene_rect.width() / original_size.width()
                 height_ratio = scene_rect.height() / original_size.height()
                 self.scale(1 / width_ratio, 1 / height_ratio)
@@ -379,55 +275,54 @@ class ImageViewer(QGraphicsView):
     def show_pixmap(self, new_pixmap):
         if not new_pixmap.isNull():
             # Assign new_pixmap to current_pixmap if current_pixmap is None
-            if self.current_pixmap is None:
-                self.current_pixmap = new_pixmap
+            if self.__current_pixmap is None:
+                self.__current_pixmap = new_pixmap
 
             # Fix: Assign new_pixmap to original_pixmap if original_pixmap is None
-            if self.original_pixmap is None:
-                self.original_pixmap = new_pixmap
+            if self.__original_pixmap is None:
+                self.__original_pixmap = new_pixmap
 
-            self.previous_pixmap = self.current_pixmap
-            self.current_pixmap = new_pixmap
+            self.__previous_pixmap = self.__current_pixmap
+            self.__current_pixmap = new_pixmap
 
-            if self.pixmap_item:
-                print("Line 178: self.scene.removeItem(self.pixmap_item)")
-                self.scene.removeItem(self.pixmap_item)
+            if self.__pixmap_item and self.__pixmap_item.scene() == self.__scene:
+                self.__scene.removeItem(self.__pixmap_item)
             
-            self.pixmap_item = QGraphicsPixmapItem(self.current_pixmap)
-            self.pixmap_item.setZValue(-1)
-            self.setSceneRect(QRectF(self.current_pixmap.rect()))  # Set scene size to image size
-            self.scene.addItem(self.pixmap_item)            
-            # self.zoom_in()
+            self.__pixmap_item = QGraphicsPixmapItem(self.__current_pixmap)
+            self.__pixmap_item.setZValue(-1)
+            self.setSceneRect(QRectF(self.__current_pixmap.rect()))  # Set scene size to image size
+            self.__scene.addItem(self.__pixmap_item)            
 
         # show the rectangle over the image.
-        if self.cropRect is not None:
+        if self.__crop_rect is not None:
             self.reset_rect()
-            self.scene.removeItem(self.cropRect)
-            # self.cropRect = QGraphicsRectItem()
-            # self.cropRect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
-            if self._crop_mode:
-                self.scene.addItem(self.cropRect)
+            if self.__crop_rect.scene() == self.__scene: 
+                self.__scene.removeItem(self.__crop_rect)
+            # self.__crop_rect = QGraphicsRectItem()
+            # self.__crop_rect.setPen(QPen(QColor('red'), 2, Qt.PenStyle.SolidLine))
+            if self.__crop_mode:
+                self.__scene.addItem(self.__crop_rect)
                 self.crop_rectangle_changed.emit(self.get_current_crop_rect())
 
         self.update_image_info()
 
     def show_new_pixmap(self, pixmap):
-        self.original_pixmap = pixmap
-        self.previous_pixmap = pixmap
-        self.current_pixmap = pixmap
+        self.__original_pixmap = pixmap
+        self.__previous_pixmap = pixmap
+        self.__current_pixmap = pixmap
         self.show_pixmap(pixmap)
         self.show_image_initial_size()
 
         # self.reset_rect()
 
     def open_new_image(self, image_path):
-        self.image_path = image_path
+        self.__image_path = image_path
         image = ImageProcessingAlgorithms.load_image_to_qimage(image_path)
         pixmap = QPixmap.fromImage(image)
 
-        self.original_pixmap = pixmap
-        self.previous_pixmap = pixmap
-        self.current_pixmap = pixmap
+        self.__original_pixmap = pixmap
+        self.__previous_pixmap = pixmap
+        self.__current_pixmap = pixmap
         self.show_pixmap(pixmap)
         self.show_image_initial_size()
         # self.reset_rect()
@@ -470,30 +365,33 @@ class ImageViewer(QGraphicsView):
 
     def zoom_out(self):
         self.zoom(0.9)
+        self.__reposition_buttons()
         
     def zoom_in(self):
         self.zoom(1.1)
+        self.__reposition_buttons()
         
     def zoom(self, factor):
             self.scale(factor, factor)
+            self.__reposition_buttons()
     
     def updateViewer(self, zoomRect):
         if not self.hasImage():
             return
         if (zoomRect):
-            self.fitInView(zoomRect, self.aspectRatioMode)  # Show zoomed rect.
+            self.fitInView(zoomRect, self.__aspect_ratio_mode)  # Show zoomed rect.
         else:
-            self.fitInView(self.sceneRect(), self.aspectRatioMode)  # Show entire image.
+            self.fitInView(self.sceneRect(), self.__aspect_ratio_mode)  # Show entire image.
 
     def hasImage(self):
         """ Returns whether the scene contains an image pixmap.
         """
-        return self.pixmap_item is not None
+        return self.__pixmap_item is not None
             
     def keyPressEvent(self, event):
-        if (self.regionZoomKey is not None) and (event.key() == self.regionZoomKey):
-            self.regionZoomKeyPressed = True
-            if self._crop_mode:
+        if (self.__region_zoom_key is not None) and (event.key() == self.__region_zoom_key):
+            self.__region_zoom_key_pressed = True
+            if self.__crop_mode:
                 self.setCursor(Qt.CursorShape.OpenHandCursor)
             else:
                 self.setCursor(Qt.CursorShape.CrossCursor)
@@ -511,10 +409,10 @@ class ImageViewer(QGraphicsView):
             self.parent().close()  # Close the window
             
     def keyReleaseEvent(self, event):
-        if (self.regionZoomKey is not None) and (event.key() == self.regionZoomKey):
-            self.regionZoomKeyPressed = False
+        if (self.__region_zoom_key is not None) and (event.key() == self.__region_zoom_key):
+            self.__region_zoom_key_pressed = False
 
-            if self._crop_mode:
+            if self.__crop_mode:
                 self.setCursor(Qt.CursorShape.CrossCursor)
             else:
                 self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -522,29 +420,27 @@ class ImageViewer(QGraphicsView):
 
     def mousePressEvent(self, event):
         # Start dragging to pan?
-        self._pixelPosition = event.pos()  # store pixel position
+        self.__pixel_position = event.pos()  # store pixel position
 
         super().mousePressEvent(event)
-        if self._crop_mode:
-            if  (self.regionZoomKeyPressed == True) and (event.button() == Qt.MouseButton.LeftButton):
+        if self.__crop_mode:
+            if  (self.__region_zoom_key_pressed == True) and (event.button() == Qt.MouseButton.LeftButton):
                 self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-                self._isPanning = True
+                self.__is_panning = True
                 self._startPosPanning = event.pos()
             elif (event.button() == Qt.MouseButton.LeftButton):
-                self.rect_start_point = self.mapToScene(event.pos())
-                # if self.scene.itemAt(1) is not self.cropRect :
-                self.scene.addItem(self.cropRect)
-
-                self.cropRect.setRect(QRectF(self.rect_start_point, self.rect_start_point))
+                self.__crop_active = True
+                self.__rect_start_point = self.mapToScene(event.pos())
+                self.__scene.addItem(self.__crop_rect)
+                self.__crop_rect.setRect(QRectF(self.__rect_start_point, self.__rect_start_point))
         else:
             # Start dragging a region zoom box?
-            if (self.regionZoomKeyPressed == True) and (event.button() == Qt.MouseButton.LeftButton):
-                self._pixelPosition = event.pos()  # store pixel position
+            if (self.__region_zoom_key_pressed == True) and (event.button() == Qt.MouseButton.LeftButton):
+                self.__pixel_position = event.pos()  # store pixel position
                 self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
-                self._isZooming = True
             elif (event.button() == Qt.MouseButton.LeftButton):
                 self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-                self._isPanning = True
+                self.__is_panning = True
                 self._startPosPanning = event.pos()
 
         # event.accept()
@@ -558,7 +454,7 @@ class ImageViewer(QGraphicsView):
         rect.setRight(self.sceneRect().right())
         rect.setTop(self.sceneRect().top())
         rect.setBottom(self.sceneRect().bottom())
-        self.cropRect.setRect(rect)
+        self.__crop_rect.setRect(rect)
         return rect_changed
     
     def update_rect(self):
@@ -577,13 +473,13 @@ class ImageViewer(QGraphicsView):
         if rect.bottom() > self.sceneRect().bottom():
             rect.setBottom(self.sceneRect().bottom())
             rect_changed = True
-        self.cropRect.setRect(rect)
+        self.__crop_rect.setRect(rect)
         return rect_changed
         
     def mouseMoveEvent(self, event):
         # print(event.button())
         super().mouseMoveEvent(event)
-        if self._isPanning:
+        if self.__is_panning:
             # Calculate the movement delta in the view's coordinate system
             delta = event.pos() - self._startPosPanning
             
@@ -600,7 +496,7 @@ class ImageViewer(QGraphicsView):
             # Update the start position for the next event
             self._startPosPanning = event.pos()
         
-        elif self._crop_mode:
+        elif self.__crop_mode and self.__crop_active:
             current_point = self.mapToScene(event.pos())
             
             # Ensure current_point does not go beyond the image's boundaries
@@ -610,87 +506,89 @@ class ImageViewer(QGraphicsView):
             current_point.setX(max_x)
             current_point.setY(max_y)
             
-            rect = QRectF(self.rect_start_point, current_point).normalized()
+            if self.__rect_start_point and current_point: 
+                rect = QRectF(self.__rect_start_point, current_point).normalized()
             
-            self.cropRect.setRect(rect)
-            self.update_rect()
+                self.__crop_rect.setRect(rect)
+                self.update_rect()
 
         QGraphicsView.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
-        if self._crop_mode:
-            if self._isPanning:
+        if self.__crop_mode:
+            if self.__is_panning:
                 self.setDragMode(QGraphicsView.DragMode.NoDrag)
-                self._isPanning = False
-            elif event.button() == Qt.MouseButton.LeftButton:
-                # rect = self.cropRect.rect()
+                self.__is_panning = False
+            elif event.button() == Qt.MouseButton.LeftButton and self.__crop_active:
+                # rect = self.__crop_rect.rect()
                 # Emit updating the crop rectangle
                 self.crop_rectangle_changed.emit(self.get_current_crop_rect())
+                self.__crop_active = False
         else:
-            if (self.regionZoomKeyPressed == True) and (event.button() == Qt.MouseButton.LeftButton):
-                zoomRect = self.scene.selectionArea().boundingRect().intersected(self.sceneRect())
+            if (self.__region_zoom_key_pressed == True) and (event.button() == Qt.MouseButton.LeftButton):
+                zoomRect = self.__scene.selectionArea().boundingRect().intersected(self.sceneRect())
                 self.setDragMode(QGraphicsView.DragMode.NoDrag)
-                self.scene.setSelectionArea(QPainterPath())
-                zoomPixelWidth = abs(event.pos().x() - self._pixelPosition.x())
-                zoomPixelHeight = abs(event.pos().y() - self._pixelPosition.y())
+                self.__scene.setSelectionArea(QPainterPath())
+                zoomPixelWidth = abs(event.pos().x() - self.__pixel_position.x())
+                zoomPixelHeight = abs(event.pos().y() - self.__pixel_position.y())
                 if zoomPixelWidth > 3 and zoomPixelHeight > 3:
                     if zoomRect.isValid() and (zoomRect != self.sceneRect()):
                         self.updateViewer(zoomRect)
-            elif self._isPanning:
+            elif self.__is_panning:
                 self.setDragMode(QGraphicsView.DragMode.NoDrag)
-                self._isPanning = False
+                self.__is_panning = False
     
     
     def get_original_pixmap(self):
-        return self.original_pixmap
+        return self.__original_pixmap
     
     def get_current_pixmap(self):
-        return self.current_pixmap
+        return self.__current_pixmap
     
     def get_previous_pixmap(self):
-        return self.previous_pixmap
+        return self.__previous_pixmap
     
     def get_current_crop_rect(self):
-        return self.cropRect.rect()
+        return self.__crop_rect.rect()
     
     def set_crop_rectangle(self, x, y, width, height):
-        self.cropRect.setRect(QRectF(QPointF(x,y), QSizeF(width, height)))
+        self.__crop_rect.setRect(QRectF(QPointF(x,y), QSizeF(width, height)))
         if self.update_rect():
             self.crop_rectangle_changed.emit(self.get_current_crop_rect())
 
     def flip_vertical(self):
-        if self.current_pixmap:
+        if self.__current_pixmap:
             # Flip the pixmap vertically
-            self.current_pixmap = self.current_pixmap.transformed(QTransform().scale(1, -1))
+            self.__current_pixmap = self.__current_pixmap.transformed(QTransform().scale(1, -1))
             # Update the pixmap item with the new pixmap
-            self.show_pixmap(self.current_pixmap)
+            self.show_pixmap(self.__current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the flipped image
             self.reset_rect()
 
     def flip_horizontal(self):
-        if self.current_pixmap:
+        if self.__current_pixmap:
             # Flip the pixmap horizontally
-            self.current_pixmap = self.current_pixmap.transformed(QTransform().scale(-1, 1))
+            self.__current_pixmap = self.__current_pixmap.transformed(QTransform().scale(-1, 1))
             # Update the pixmap item with the new pixmap
-            self.show_pixmap(self.current_pixmap)
+            self.show_pixmap(self.__current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the flipped image
             self.reset_rect()
 
     def rotate_left(self):
-        if self.current_pixmap:
+        if self.__current_pixmap:
             # Rotate the pixmap 90 degrees counter-clockwise
-            self.current_pixmap = self.current_pixmap.transformed(QTransform().rotate(-90))
+            self.__current_pixmap = self.__current_pixmap.transformed(QTransform().rotate(-90))
             # Update the pixmap item with the new pixmap
-            self.show_pixmap(self.current_pixmap)
+            self.show_pixmap(self.__current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the rotated image
             self.reset_rect()
 
     def rotate_right(self):
-        if self.current_pixmap:
+        if self.__current_pixmap:
             # Rotate the pixmap 90 degrees clockwise
-            self.current_pixmap = self.current_pixmap.transformed(QTransform().rotate(90))
+            self.__current_pixmap = self.__current_pixmap.transformed(QTransform().rotate(90))
             # Update the pixmap item with the new pixmap
-            self.show_pixmap(self.current_pixmap)
+            self.show_pixmap(self.__current_pixmap)
             self.show_image_initial_size()  # Adjust the view to fit the rotated image
             self.reset_rect()
 
@@ -702,8 +600,8 @@ class ImageViewer(QGraphicsView):
         image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
         image_cv = ImageProcessingAlgorithms.adjust_contrast_brightness_gamma(image_cv, contrast_value, brightness_value, gamma_value, shadows_value, highlights_value, mask_fulres_cv)
         image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
-        self.current_pixmap = image_pixmap
-        self.show_pixmap(self.current_pixmap)
+        self.__current_pixmap = image_pixmap
+        self.show_pixmap(self.__current_pixmap)
 
     def adjust_colors(self, temperature_value, saturation_value, hue_value, red_value, green_value, blue_value):
         print("Adjust Colors : temperature_value:  %.2f, saturation_value:  %.2f, hue_value:  %.2f, red_value:  %.2f, green_value:  %.2f, blue_value: %.2f" % (temperature_value, saturation_value, hue_value, red_value, green_value, blue_value))
@@ -720,8 +618,8 @@ class ImageViewer(QGraphicsView):
         image_cv = ImageProcessingAlgorithms.adjust_saturation_hue(image_cv, saturation_value, hue_value)
         
         image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
-        self.current_pixmap = image_pixmap
-        self.show_pixmap(self.current_pixmap)
+        self.__current_pixmap = image_pixmap
+        self.show_pixmap(self.__current_pixmap)
     
     def create_mask_luminance(self):
         grayscale_image = self.get_original_pixmap().toImage().convertToFormat(QImage.Format.Format_Grayscale8)
@@ -731,13 +629,13 @@ class ImageViewer(QGraphicsView):
                                             Qt.AspectRatioMode.IgnoreAspectRatio, 
                                             Qt.TransformationMode.SmoothTransformation)
         
-        mask_fulres_cv = ImageProcessingAlgorithms.convertQImageToArray(mask_fulres)[:,:,0] # decerease the 3 dimension to 2
+        mask_fulres_cv = ImageProcessingAlgorithms.convert_qimage_to_array(mask_fulres)[:,:,0] # decerease the 3 dimension to 2
         return mask_fulres_cv
     
     def apply_lut_to_current_pixmap(self, lut_global, lut_shadows, lut_highlight, mask, channel):
         print("Apply LUT to current image.")
 
-        if self.original_pixmap is not None:
+        if self.__original_pixmap is not None:
             mask_fulres_cv = self.create_mask_luminance()
             
             image_cv = self.convert_pixmap_to_opencv_image(self.get_original_pixmap())
@@ -745,14 +643,14 @@ class ImageViewer(QGraphicsView):
             image_cv = ImageProcessingAlgorithms.apply_lut_local(image_cv, lut_shadows, lut_highlight, channel, mask_fulres_cv)
             image_pixmap = self.convert_opencv_image_to_pixmap(image_cv)
 
-            self.current_pixmap = image_pixmap
-            self.show_pixmap(self.current_pixmap)
+            self.__current_pixmap = image_pixmap
+            self.show_pixmap(self.__current_pixmap)
 
     def convert_pixmap_to_opencv_image(self, pixmap):
-        return ImageProcessingAlgorithms.convertQImageToArray(pixmap.toImage())
+        return ImageProcessingAlgorithms.convert_qimage_to_array(pixmap.toImage())
 
     def convert_opencv_image_to_pixmap(self, cv_image):
-        return QPixmap.fromImage(ImageProcessingAlgorithms.convertArrayToQImage(cv_image))
+        return QPixmap.fromImage(ImageProcessingAlgorithms.convert_array_to_qimage(cv_image))
     
             
     

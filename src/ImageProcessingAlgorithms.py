@@ -240,7 +240,7 @@ def linear_interpolation(kelvin_value):
     return (int(round(r)), int(round(g)), int(round(b)))
 
 
-def convertArrayToQImage(array):
+def convert_array_to_qimage(array):
         """Convert an array-like image to a QImage in PyQt6.
 
         The created QImage is using a copy of the array data.
@@ -281,7 +281,7 @@ def convertArrayToQImage(array):
 
         return qimage.copy()  # Making a copy of the image and its data
 
-def convertQImageToArray(image):
+def convert_qimage_to_array(image):
     """Convert a QImage to a numpy array in PyQt6.
 
     If QImage format is not Format_RGB888, Format_RGBA8888, or Format_ARGB32,

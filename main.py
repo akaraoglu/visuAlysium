@@ -41,43 +41,41 @@ from src.ImageEditorWindow import ImageViewerWindow
 from src.FolderExplorer import FolderExplorer
 
 class MainWindow(QMainWindow):
-    def __init__(self, splash):
+    def __init__(self):
         super().__init__()
-        self.splash = splash  # Receive the splash screen as a parameter
         self.setWindowTitle("VisuAlysium - Image Editor")
         self.initUI()
 
     def initUI(self):
         self.setup_menus()  # Set up the menus
                 
-        self.image_viewer_window = ImageViewerWindow()
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.layout = QHBoxLayout(self.central_widget)
+        self.__image_viewer_window = ImageViewerWindow()
+        self.__central_widget = QWidget()
+        self.setCentralWidget(self.__central_widget)
+        self.__layout = QHBoxLayout(self.__central_widget)
         
-        self.default_path = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.HomeLocation)[0]
+        self.__default_path = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.HomeLocation)[0]
 
-        self.image_list_widget = FolderExplorer(self.default_path)
-        self.image_list_widget.show_image.connect(self.open_image_viewer)
-        self.image_list_widget.path_updated.connect(self.set_folder_tree_view_path)
+        self.__image_list_widget = FolderExplorer(self.__default_path)
+        self.__image_list_widget.show_image.connect(self.open_image_viewer)
+        self.__image_list_widget.path_updated.connect(self.set_folder_tree_view_path)
 
         # Add widgets to layout
-        self.folder_tree_view = QTreeView()
+        self.__folder_tree_view = QTreeView()
 
         splitter = QSplitter()
-        splitter.addWidget(self.folder_tree_view)
-        splitter.addWidget(self.image_list_widget)
+        splitter.addWidget(self.__folder_tree_view)
+        splitter.addWidget(self.__image_list_widget)
         splitter.setStretchFactor(0, 0)  # Prevent the folder view from stretching
         splitter.setStretchFactor(1, 1)  # Allow the image view to stretch
         splitter.setSizes([400, 600])
-        self.layout.addWidget(splitter)
+        self.__layout.addWidget(splitter)
 
         # Setting the width of the columns do not work if it is set before the splitters added.
         # Uknown issue. 
         self.setup_folder_tree_view()
         
         self.set_theme("dark") # Default Mode
-        # self.splash.finish(self)  # Close the splash screen once the main UI is ready
 
             
     def setup_menus(self):
@@ -188,8 +186,8 @@ class MainWindow(QMainWindow):
         
         QApplication.instance().setPalette(palette)
         
-        if hasattr(self, 'image_list_widget'):
-            self.image_list_widget.update_colors()  # Assuming you've added this method to FolderExplorer
+        if hasattr(self, '_MainWindow__image_list_widget'):
+            self.__image_list_widget.update_colors()  # Assuming you've added this method to FolderExplorer
         self.update()  # Ensure the main window and all its children are repainted
 
 
@@ -250,50 +248,50 @@ class MainWindow(QMainWindow):
 
     def setup_folder_tree_view(self):
         # Left panel: Folder tree view
-        self.folder_model = QFileSystemModel()
-        self.folder_model.setRootPath(QDir.rootPath())
-        self.folder_tree_view.setModel(self.folder_model)
-        self.folder_tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.folder_tree_view.customContextMenuRequested.connect(self.open_menu)
-        self.folder_tree_view.setRootIndex(self.folder_model.index(''))  # Set the root index to root directory
-        self.folder_tree_view.clicked.connect(self.folder_selected)
-        default_index = self.folder_model.index(self.default_path)
-        self.folder_tree_view.setCurrentIndex(default_index)
-        self.folder_tree_view.setColumnWidth(0, 250)  # Set the width of the "Name" column
+        self.__folder_model = QFileSystemModel()
+        self.__folder_model.setRootPath(QDir.rootPath())
+        self.__folder_tree_view.setModel(self.__folder_model)
+        self.__folder_tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.__folder_tree_view.customContextMenuRequested.connect(self.open_menu)
+        self.__folder_tree_view.setRootIndex(self.__folder_model.index(''))  # Set the root index to root directory
+        self.__folder_tree_view.clicked.connect(self.folder_selected)
+        default_index = self.__folder_model.index(self.__default_path)
+        self.__folder_tree_view.setCurrentIndex(default_index)
+        self.__folder_tree_view.setColumnWidth(0, 250)  # Set the width of the "Name" column
 
     def set_folder_tree_view_path(self, new_path):
-        default_index = self.folder_model.index(new_path)
-        self.folder_tree_view.setCurrentIndex(default_index)
+        default_index = self.__folder_model.index(new_path)
+        self.__folder_tree_view.setCurrentIndex(default_index)
     
     def open_image_menu(self, position):
         menu = QMenu()
         open_image_action = QAction("Show Image", self)
-        open_image_action.triggered.connect(lambda: self.image_double_clicked(self.image_list_widget.currentItem()))
+        open_image_action.triggered.connect(lambda: self.image_double_clicked(self.__image_list_widget.currentItem()))
         menu.addAction(open_image_action)
-        menu.exec(self.image_list_widget.viewport().mapToGlobal(position))
+        menu.exec(self.__image_list_widget.viewport().mapToGlobal(position))
         
     def open_menu(self, position):
         menu = QMenu()
         show_images_action = QAction("Show Images", self)
-        show_images_action.triggered.connect(lambda: self.folder_selected(self.folder_tree_view.currentIndex()))
+        show_images_action.triggered.connect(lambda: self.folder_selected(self.__folder_tree_view.currentIndex()))
         menu.addAction(show_images_action)
-        menu.exec(self.folder_tree_view.viewport().mapToGlobal(position))
+        menu.exec(self.__folder_tree_view.viewport().mapToGlobal(position))
 
     def folder_selected(self, index):
-        folder_path = self.folder_model.filePath(index)
+        folder_path = self.__folder_model.filePath(index)
         self.load_images(folder_path)
 
     def load_images(self, folder_path):
-        self.image_list_widget.update_root_path(folder_path)
+        self.__image_list_widget.update_root_path(folder_path)
 
     def image_double_clicked(self, item):
         image_path = item.toolTip()
-        self.image_viewer_window.show()
-        self.image_viewer_window.show_new_image(image_path)
+        self.__image_viewer_window.show()
+        self.__image_viewer_window.show_new_image(image_path)
 
     def open_image_viewer(self, image_path):
-        self.image_viewer_window.show()
-        self.image_viewer_window.show_new_image(image_path)
+        self.__image_viewer_window.show()
+        self.__image_viewer_window.show_new_image(image_path)
 
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -342,7 +340,7 @@ def main():
     splash.show()
     app.processEvents()  # Process any pending events to ensure the splash displays immediately
 
-    window = MainWindow(splash)
+    window = MainWindow()
     
     # Set a timer to wait for 2 seconds before showing the main window
     QTimer.singleShot(2000, lambda: (window.show(), splash.finish(window)))

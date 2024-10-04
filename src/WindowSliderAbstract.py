@@ -8,18 +8,18 @@ from src.WindowImageViewerAbstract import ImageViewerWindowAbstract
 
 class SliderLayout(QHBoxLayout):
 
+    BUTTON_SIZE = QSize(120,60)  # Button size (width and height)
+    ICON_SIZE = QSize(40,40)  # Icon size within the button
+
     def __init__(self, slider_list):
         super().__init__()
         
-        self.button_size = QSize(120,60)  # Button size (width and height)
-        self.icon_size = QSize(40,40)  # Icon size within the button
-
 
         # layout = QHBoxLayout()
         self.setAlignment(Qt.AlignmentFlag.AlignTop)
         # self.setLayout(layout)
 
-        self.lighting_layout = QGridLayout()
+        self.__lighting_layout = QGridLayout()
 
         # Add sliders
         self.sliders = {}
@@ -32,12 +32,12 @@ class SliderLayout(QHBoxLayout):
             qlabel = QLabel(str(label + " :"))
             qlabel.setMaximumSize(80, qlabel.sizeHint().height())  # Set fixed size
             qlabel.setAlignment(Qt.AlignmentFlag.AlignRight)
-            self.lighting_layout.addWidget(qlabel, mod3, div*2)
-            self.lighting_layout.addWidget(slider, mod3, (div*2)+1)
+            self.__lighting_layout.addWidget(qlabel, mod3, div*2)
+            self.__lighting_layout.addWidget(slider, mod3, (div*2)+1)
 
         spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.addItem(spacer)
-        self.addLayout(self.lighting_layout)
+        self.addLayout(self.__lighting_layout)
         self.addItem(spacer)
     
     def reset_sliders(self):
